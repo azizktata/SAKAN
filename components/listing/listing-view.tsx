@@ -1,0 +1,593 @@
+'use client'
+
+import Image from 'next/image'
+import Link from 'next/link'
+import { useState, useMemo, useEffect } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
+import { Navbar } from '@/components/layout/navbar'
+import { ALL_PROPERTIES, type Property } from '@/data/properties'
+import { TYPES } from '@/data/property-types'
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const STATUSES = ['Tous', 'Neuf', 'Ancien']
+const LIFESTYLES = ['Ascenseur', 'Garage', 'Terrasse', 'Meublé', 'Proche mosquée', 'École', 'Transports']
+
+const SORT_OPTIONS = [
+  { value: 'recent',     label: 'Plus récents'       },
+  { value: 'price-asc',  label: 'Prix croissant'     },
+  { value: 'price-desc', label: 'Prix décroissant'   },
+  { value: 'area',       label: 'Surface'             },
+]
+
+function fmt(n: number) {
+  return n.toLocaleString('fr-TN')
+}
+
+// ── Icons ─────────────────────────────────────────────────────────────────────
+
+function IconGrid() {
+  return (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+    </svg>
+  )
+}
+
+function IconMap() {
+  return (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+    </svg>
+  )
+}
+
+function IconFilter() {
+  return (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+    </svg>
+  )
+}
+
+function IconPin() {
+  return (
+    <svg aria-hidden="true" className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+    </svg>
+  )
+}
+
+function IconChevronLeft() {
+  return (
+    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+    </svg>
+  )
+}
+
+function IconChevronRight() {
+  return (
+    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+    </svg>
+  )
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
+
+export function ListingView() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+
+  const [type,        setType]        = useState(() => searchParams.get('type') ?? 'Tous')
+  const [mode,        setMode]        = useState<'vente' | 'location' | 'tous'>(() => {
+    const p = searchParams.get('mode')
+    return (p === 'vente' || p === 'location') ? p : 'tous'
+  })
+  const [view,        setView]        = useState<'grid' | 'map'>(() =>
+    searchParams.get('view') === 'map' ? 'map' : 'grid'
+  )
+  const [location,    setLocation]    = useState(() => searchParams.get('location') ?? '')
+  const [sort,        setSort]        = useState(() => searchParams.get('sort') ?? 'recent')
+  const [status,      setStatus]      = useState('Tous')
+  const [minPrice,    setMinPrice]    = useState(() => searchParams.get('minPrice') ?? '')
+  const [maxPrice,    setMaxPrice]    = useState(() => searchParams.get('maxPrice') ?? '')
+  const [minArea,     setMinArea]     = useState('')
+  const [rooms,       setRooms]       = useState(() => Number(searchParams.get('rooms') ?? 0))
+  const [features,    setFeatures]    = useState<string[]>([])
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [page,        setPage]        = useState(1)
+  const PER_PAGE = 9
+
+  // Sync filter state whenever the URL changes (e.g. navbar Vente/Location links)
+  useEffect(() => {
+    const p = searchParams.get('mode')
+    setMode((p === 'vente' || p === 'location') ? p : 'tous')
+    const t = searchParams.get('type')
+    setType(t && TYPES.includes(t as typeof TYPES[number]) ? t : 'Tous')
+    setLocation(searchParams.get('location') ?? '')
+    setView(searchParams.get('view') === 'map' ? 'map' : 'grid')
+    setSort(searchParams.get('sort') ?? 'recent')
+    setMinPrice(searchParams.get('minPrice') ?? '')
+    setMaxPrice(searchParams.get('maxPrice') ?? '')
+    setRooms(Number(searchParams.get('rooms') ?? 0))
+    setPage(1)
+  }, [searchParams])
+
+  function updateParams(patch: Record<string, string | null>) {
+    const params = new URLSearchParams(searchParams.toString())
+    Object.entries(patch).forEach(([k, v]) => {
+      if (!v || v === 'Tous' || v === 'tous' || v === 'recent' || v === '0') {
+        params.delete(k)
+      } else {
+        params.set(k, v)
+      }
+    })
+    const qs = params.toString()
+    router.replace(qs ? `/logements?${qs}` : '/logements', { scroll: false })
+  }
+
+  const toggleFeature = (f: string) =>
+    setFeatures((prev) => prev.includes(f) ? prev.filter((x) => x !== f) : [...prev, f])
+
+  const filtered = useMemo(() => {
+    let list = [...ALL_PROPERTIES]
+    if (mode !== 'tous')         list = list.filter((p) => p.mode === mode)
+    if (type !== 'Tous')         list = list.filter((p) => p.type === type)
+    if (status !== 'Tous')       list = list.filter((p) => p.status === status)
+    if (location.trim())         list = list.filter((p) => p.location.toLowerCase().includes(location.toLowerCase()))
+    if (minPrice)                list = list.filter((p) => p.price >= Number(minPrice))
+    if (maxPrice)                list = list.filter((p) => p.price <= Number(maxPrice))
+    if (minArea)                 list = list.filter((p) => p.area >= Number(minArea))
+    if (rooms > 0)               list = list.filter((p) => p.rooms >= rooms)
+    if (features.length > 0)     list = list.filter((p) => features.every((f) => p.features.includes(f)))
+
+    switch (sort) {
+      case 'price-asc':  list.sort((a, b) => a.price - b.price); break
+      case 'price-desc': list.sort((a, b) => b.price - a.price); break
+      case 'area':       list.sort((a, b) => b.area - a.area);   break
+    }
+    return list
+  }, [mode, type, status, location, minPrice, maxPrice, minArea, rooms, features, sort])
+
+  const paginated = filtered.slice(0, page * PER_PAGE)
+
+  const activeFilters = [
+    mode !== 'tous' && (mode === 'vente' ? 'Vente' : 'Location'),
+    type !== 'Tous' && type,
+    status !== 'Tous' && status,
+    location.trim() && `"${location.trim()}"`,
+    minPrice && `≥ ${fmt(Number(minPrice))} DT`,
+    maxPrice && `≤ ${fmt(Number(maxPrice))} DT`,
+    minArea && `≥ ${minArea} m²`,
+    rooms > 0 && `${rooms}+ ch.`,
+    ...features,
+  ].filter(Boolean) as string[]
+
+  function resetAll() {
+    setMode('tous'); setType('Tous'); setStatus('Tous'); setLocation('')
+    setMinPrice(''); setMaxPrice(''); setMinArea('')
+    setRooms(0); setFeatures([])
+    router.replace('/logements', { scroll: false })
+  }
+
+  const modeLabel = mode === 'location' ? 'à louer' : mode === 'vente' ? 'à vendre' : 'disponibles'
+
+  return (
+    <div className="min-h-screen pt-16" style={{ background: 'var(--color-bg)' }}>
+
+      <Navbar />
+
+      {/* ── Filter bar ───────────────────────────────────────────────────── */}
+      <div
+        className="sticky z-30"
+        style={{ top: '64px', background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)' }}
+      >
+        <div className="max-w-7xl mx-auto px-6 py-3 flex flex-wrap items-center gap-2.5">
+
+          {/* Vente / Location / Tous */}
+          <div className="flex rounded-xl overflow-hidden border" style={{ borderColor: 'var(--color-border)' }}>
+            {(['tous', 'vente', 'location'] as const).map((m) => (
+              <button key={m} onClick={() => { setMode(m); updateParams({ mode: m }) }}
+                className="px-3 py-1.5 text-sm font-medium transition-colors duration-150 capitalize"
+                style={mode === m
+                  ? { background: 'var(--color-primary)', color: '#fff' }
+                  : { background: 'transparent', color: 'var(--color-text-secondary)' }}>
+                {m === 'tous' ? 'Tous' : m === 'vente' ? 'Vente' : 'Location'}
+              </button>
+            ))}
+          </div>
+
+          {/* Type */}
+          <div className="flex rounded-xl overflow-hidden border" style={{ borderColor: 'var(--color-border)' }}>
+            {TYPES.map((t) => (
+              <button key={t} onClick={() => { setType(t); updateParams({ type: t }) }}
+                className="px-3 py-1.5 text-sm font-medium transition-colors duration-150"
+                style={type === t
+                  ? { background: 'var(--color-primary)', color: '#fff' }
+                  : { background: 'transparent', color: 'var(--color-text-secondary)' }}>
+                {t}
+              </button>
+            ))}
+          </div>
+
+          {/* Location */}
+          <input
+            type="text"
+            placeholder="Ville, quartier…"
+            value={location}
+            onChange={(e) => { setLocation(e.target.value); updateParams({ location: e.target.value }) }}
+            className="rounded-xl border pl-3 pr-3 py-1.5 text-sm w-40 focus:outline-none focus:ring-2"
+            style={{
+              borderColor: location ? 'var(--color-primary)' : 'var(--color-border)',
+              color: 'var(--color-text)',
+              background: 'var(--color-bg)',
+            } as React.CSSProperties}
+          />
+
+          {/* Budget */}
+          <div className="flex items-center gap-1">
+            <input type="number" placeholder="Prix min" value={minPrice}
+              onChange={(e) => { setMinPrice(e.target.value); updateParams({ minPrice: e.target.value }) }}
+              className="rounded-xl border px-3 py-1.5 text-sm w-28 focus:outline-none focus:ring-2"
+              style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }} />
+            <span className="text-xs" style={{ color: 'var(--color-muted)' }}>—</span>
+            <input type="number" placeholder="Prix max" value={maxPrice}
+              onChange={(e) => { setMaxPrice(e.target.value); updateParams({ maxPrice: e.target.value }) }}
+              className="rounded-xl border px-3 py-1.5 text-sm w-28 focus:outline-none focus:ring-2"
+              style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }} />
+          </div>
+
+          {/* Advanced filters toggle */}
+          <button
+            onClick={() => setFiltersOpen(!filtersOpen)}
+            className="flex items-center gap-2 px-4 py-1.5 rounded-xl border text-sm font-medium transition-colors duration-150"
+            style={filtersOpen
+              ? { borderColor: 'var(--color-primary)', color: 'var(--color-primary)', background: 'oklch(42% 0.09 155 / 0.06)' }
+              : { borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)', background: 'transparent' }}>
+            <IconFilter />
+            Affiner
+            {activeFilters.length > 0 && (
+              <span className="w-4 h-4 rounded-full text-[0.6rem] font-bold text-white flex items-center justify-center"
+                style={{ background: 'var(--color-primary)' }}>
+                {activeFilters.length}
+              </span>
+            )}
+          </button>
+
+          <div className="flex-1" />
+
+          {/* Sort */}
+          {/* <select value={sort} onChange={(e) => { setSort(e.target.value); updateParams({ sort: e.target.value }) }}
+            className="rounded-xl border px-3 py-1.5 text-sm appearance-none focus:outline-none"
+            style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }}>
+            {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select> */}
+
+          {/* View toggle */}
+          <div className="flex rounded-xl overflow-hidden border" style={{ borderColor: 'var(--color-border)' }}>
+            <button onClick={() => { setView('grid'); updateParams({ view: 'grid' }) }}
+              className="p-2 transition-colors"
+              style={view === 'grid' ? { background: 'var(--color-primary)', color: '#fff' }
+                : { background: 'transparent', color: 'var(--color-muted)' }}>
+              <IconGrid />
+            </button>
+            <button onClick={() => { setView('map'); updateParams({ view: 'map' }) }}
+              className="p-2 transition-colors"
+              style={view === 'map' ? { background: 'var(--color-primary)', color: '#fff' }
+                : { background: 'transparent', color: 'var(--color-muted)' }}>
+              <IconMap />
+            </button>
+          </div>
+        </div>
+
+        {/* Advanced filters panel */}
+        {filtersOpen && (
+          <div className="border-t" style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}>
+            <div className="max-w-7xl mx-auto px-6 py-5 grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-5">
+
+              {/* État */}
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider mb-2.5" style={{ color: 'var(--color-muted)' }}>État</p>
+                <div className="flex flex-wrap gap-2">
+                  {STATUSES.map((s) => (
+                    <button key={s} onClick={() => setStatus(s)}
+                      className="px-3 py-1 rounded-full text-xs font-medium border transition-colors"
+                      style={status === s
+                        ? { background: 'var(--color-primary)', color: '#fff', borderColor: 'var(--color-primary)' }
+                        : { borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Surface */}
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider mb-2.5" style={{ color: 'var(--color-muted)' }}>Surface (m²)</p>
+                <input type="number" placeholder="Min. surface" value={minArea}
+                  onChange={(e) => setMinArea(e.target.value)}
+                  className="w-full rounded-xl border px-3 py-1.5 text-sm focus:outline-none"
+                  style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }} />
+              </div>
+
+              {/* Chambres */}
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider mb-2.5" style={{ color: 'var(--color-muted)' }}>Chambres min.</p>
+                <div className="flex gap-2">
+                  {[0, 1, 2, 3, 4, 5].map((n) => (
+                    <button key={n} onClick={() => { setRooms(n); updateParams({ rooms: String(n) }) }}
+                      className="w-8 h-8 rounded-full text-xs font-semibold border transition-colors"
+                      style={rooms === n
+                        ? { background: 'var(--color-primary)', color: '#fff', borderColor: 'var(--color-primary)' }
+                        : { borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
+                      {n === 0 ? 'T' : `${n}+`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Lifestyle */}
+              <div className="col-span-2 md:col-span-1">
+                <p className="text-xs font-semibold uppercase tracking-wider mb-2.5" style={{ color: 'var(--color-muted)' }}>Critères</p>
+                <div className="flex flex-wrap gap-2">
+                  {LIFESTYLES.map((f) => (
+                    <button key={f} onClick={() => toggleFeature(f)}
+                      className="px-3 py-1 rounded-full text-xs font-medium border transition-colors"
+                      style={features.includes(f)
+                        ? { background: 'var(--color-primary)', color: '#fff', borderColor: 'var(--color-primary)' }
+                        : { borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
+                      {f}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {activeFilters.length > 0 && (
+              <div className="max-w-7xl mx-auto px-6 pb-4 flex items-center justify-between">
+                <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                  {filtered.length} résultat{filtered.length !== 1 ? 's' : ''}
+                </p>
+                <button onClick={resetAll}
+                  className="text-xs font-medium transition-colors hover:underline"
+                  style={{ color: 'var(--color-primary)' }}>
+                  Effacer tous les filtres
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Main content ─────────────────────────────────────────────────── */}
+      <div className="max-w-7xl mx-auto px-6 py-8">
+
+        {/* Result count + active chips */}
+        <div className="flex flex-wrap items-center gap-3 mb-6">
+          <h1 className="font-display font-semibold" style={{ fontSize: '1.25rem', color: 'var(--color-text)' }}>
+            {filtered.length.toLocaleString('fr-TN')} bien{filtered.length !== 1 ? 's' : ''} {modeLabel}
+          </h1>
+
+          {activeFilters.map((f) => (
+            <span key={f}
+              className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full"
+              style={{ background: 'oklch(42% 0.09 155 / 0.08)', color: 'var(--color-primary)' }}>
+              {f}
+            </span>
+          ))}
+        </div>
+
+        {/* Grid view */}
+        {view === 'grid' && (
+          <>
+            {filtered.length === 0 ? (
+              <div className="py-24 text-center">
+                <p className="text-lg font-display font-semibold mb-2" style={{ color: 'var(--color-text)' }}>
+                  Aucun résultat
+                </p>
+                <p className="text-sm mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+                  Essayez d&apos;élargir vos critères de recherche.
+                </p>
+                <button onClick={resetAll}
+                  className="px-5 py-2 rounded-full text-sm font-semibold text-white"
+                  style={{ background: 'var(--color-primary)' }}>
+                  Réinitialiser les filtres
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {paginated.map((prop) => (
+                  <PropertyCard key={prop.id} prop={prop} />
+                ))}
+              </div>
+            )}
+
+            {/* Load more */}
+            {paginated.length < filtered.length && (
+              <div className="mt-10 text-center">
+                <button onClick={() => setPage((p) => p + 1)}
+                  className="px-8 py-3 rounded-full text-sm font-semibold border transition-all hover:shadow-md"
+                  style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)', background: 'transparent' }}>
+                  Voir plus de biens ({filtered.length - paginated.length} restants)
+                </button>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Map view placeholder */}
+        {view === 'map' && (
+          <div className="rounded-3xl overflow-hidden flex items-center justify-center"
+            style={{ height: '60vh', background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+            <div className="text-center">
+              <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4"
+                style={{ background: 'oklch(42% 0.09 155 / 0.1)' }}>
+                <IconMap />
+              </div>
+              <p className="font-display font-semibold mb-1" style={{ color: 'var(--color-text)' }}>
+                Carte interactive
+              </p>
+              <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                Google Maps — disponible bientôt
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Property card ─────────────────────────────────────────────────────────────
+
+function PropertyCard({ prop }: { prop: Property }) {
+  const [imgIdx, setImgIdx] = useState(0)
+  const hasMultiple = prop.images.length > 1
+  const badgeBg = prop.badge === 'Exclusif' ? 'var(--color-accent)' : 'var(--color-primary)'
+  const priceLabel = prop.mode === 'location' ? '/mois' : 'DT'
+
+  function prev(e: React.MouseEvent) {
+    e.preventDefault()
+    setImgIdx((i) => (i - 1 + prop.images.length) % prop.images.length)
+  }
+
+  function next(e: React.MouseEvent) {
+    e.preventDefault()
+    setImgIdx((i) => (i + 1) % prop.images.length)
+  }
+
+  return (
+    <article
+      className="group rounded-2xl overflow-hidden shadow-[0_2px_12px_rgb(0_0_0/0.06)] hover:shadow-[0_10px_36px_rgb(0_0_0/0.12)] transition-shadow duration-300 cursor-pointer"
+      style={{ background: 'var(--color-surface)' }}
+    >
+      {/* Image with slideshow */}
+      <div className="relative h-48 overflow-hidden">
+        <Image
+          src={prop.images[imgIdx]}
+          alt={prop.title}
+          fill
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          className="object-cover transition-transform duration-500 group-hover:scale-105"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/25 to-transparent" />
+
+        {/* Badge */}
+        {prop.badge && (
+          <span className="absolute top-3 left-3 text-xs font-semibold px-2.5 py-1 rounded-full text-white"
+            style={{ background: badgeBg }}>
+            {prop.badge}
+          </span>
+        )}
+
+        {/* Status */}
+        <span className="absolute top-3 right-3 text-[0.65rem] font-medium rounded-md px-2 py-0.5 backdrop-blur-sm"
+          style={{ background: 'oklch(98% 0.006 155 / 0.85)', color: 'var(--color-text-secondary)' }}>
+          {prop.status}
+        </span>
+
+        {/* Prev / Next arrows */}
+        {hasMultiple && (
+          <>
+            <button
+              onClick={prev}
+              aria-label="Image précédente"
+              className="absolute left-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity w-7 h-7 rounded-full flex items-center justify-center text-white"
+              style={{ background: 'rgba(0,0,0,0.4)' }}
+            >
+              <IconChevronLeft />
+            </button>
+            <button
+              onClick={next}
+              aria-label="Image suivante"
+              className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity w-7 h-7 rounded-full flex items-center justify-center text-white"
+              style={{ background: 'rgba(0,0,0,0.4)' }}
+            >
+              <IconChevronRight />
+            </button>
+
+            {/* Dot indicators */}
+            <div className="absolute bottom-10 left-0 right-0 flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              {prop.images.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={(e) => { e.preventDefault(); setImgIdx(i) }}
+                  aria-label={`Image ${i + 1}`}
+                  className="w-1.5 h-1.5 rounded-full transition-colors"
+                  style={{ background: i === imgIdx ? 'white' : 'rgba(255,255,255,0.45)' }}
+                />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Content */}
+      <div className="p-4">
+        <h2
+          className="font-display font-semibold text-base leading-snug mb-1 transition-colors group-hover:text-[oklch(42%_0.09_155)]"
+          style={{ color: 'var(--color-text)' }}
+        >
+          {prop.title}
+        </h2>
+        <p className="text-xs flex items-center gap-1 mb-3" style={{ color: 'var(--color-muted)' }}>
+          <IconPin /> {prop.location}
+        </p>
+
+        {/* Specs */}
+        <div className="flex items-center gap-3 text-xs mb-3" style={{ color: 'var(--color-text-secondary)' }}>
+          <span>{prop.rooms}&thinsp;ch.</span>
+          <span className="w-px h-3" style={{ background: 'var(--color-border)' }} aria-hidden="true" />
+          <span>{prop.bathrooms}&thinsp;sdb.</span>
+          <span className="w-px h-3" style={{ background: 'var(--color-border)' }} aria-hidden="true" />
+          <span>{prop.area}&thinsp;m²</span>
+          {prop.floor > 0 && (
+            <>
+              <span className="w-px h-3" style={{ background: 'var(--color-border)' }} aria-hidden="true" />
+              <span>Ét.&thinsp;{prop.floor}</span>
+            </>
+          )}
+        </div>
+
+        {/* Features */}
+        {prop.features.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-3">
+            {prop.features.map((f) => (
+              <span key={f} className="text-[0.65rem] px-2 py-0.5 rounded-full"
+                style={{ background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }}>
+                {f}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Price + CTA */}
+        <div className="flex items-end justify-between mt-1">
+          <div>
+            <p className="font-display font-bold tabular-nums" style={{ fontSize: '1.15rem', color: 'var(--color-text)' }}>
+              {fmt(prop.price)}{' '}
+              <span className="text-sm font-normal" style={{ color: 'var(--color-muted)' }}>{priceLabel}</span>
+            </p>
+            {prop.mode === 'vente' && (
+              <p className="text-[0.7rem]" style={{ color: 'var(--color-muted)' }}>
+                {fmt(Math.round(prop.price / prop.area))}&thinsp;DT/m²
+              </p>
+            )}
+          </div>
+          <Link href={`/bien/${prop.id}`}
+            className="text-xs font-semibold px-3.5 py-2 rounded-xl transition-colors text-white"
+            style={{ background: 'var(--color-primary)' }}>
+            Voir le bien
+          </Link>
+        </div>
+      </div>
+    </article>
+  )
+}
