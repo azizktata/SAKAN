@@ -92,7 +92,7 @@ export default function HomePage() {
         {/* ── Hero ─────────────────────────────────────────────────────────── */}
         <section
           className="relative flex flex-col justify-center items-center pt-20 pb-14 overflow-hidden"
-          style={{ minHeight: '480px', maxHeight: '620px' }}
+          style={{ minHeight: '480px', maxHeight: '600px' }}
         >
           <Image
             src="/prop-2.jpg"
@@ -112,14 +112,15 @@ export default function HomePage() {
               style={{ color: 'var(--color-accent-light)', ...fadeUp(0).style }}>
              Vente & Location
             </p>
-            <h1 className="font-display font-semibold text-white leading-[1.1] mb-3"
-              style={{ fontSize: 'clamp(1.6rem, 3.2vw, 2.5rem)', ...fadeUp(80).style }}>
-              Trouvez votre logement idéal
+            <h1 className="hidden sm:block font-display font-semibold text-white leading-[1.1] mb-6"
+              style={{ fontSize: 'clamp(1.6rem, 3.2vw, 2.25rem)', ...fadeUp(80).style }}>
+              Commencer votre recherche
             </h1>
+            {/* 
             <p className="text-white/60 mb-7 leading-relaxed mx-auto max-w-[38ch]"
               style={{ fontSize: '0.9375rem', ...fadeUp(160).style }}>
               Direct, sans crédit caché, sans frais d&apos;agence.
-            </p>
+            </p> */}
             <div className="flex justify-center" {...fadeUp(240)}>
               <SearchBar />
             </div>
@@ -133,8 +134,7 @@ export default function HomePage() {
                 { label: 'Nouveaux biens',        href: '/logements?sort=recent'                     },
               ].map(({ label, href }) => (
                 <Link key={label} href={href}
-                  className="px-3.5 py-1.5 rounded-full text-xs font-medium backdrop-blur-sm transition-colors hover:bg-white/20"
-                  style={{ background: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.85)', border: '1px solid rgba(255,255,255,0.18)' }}>
+                 className="mt-3 text-[0.7rem] md:text-sm" style={{ color: 'oklch(85% 0.006 155 / 0.5)', ...fadeUp(420).style }}>
                   {label}
                 </Link>
               ))}

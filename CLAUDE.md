@@ -25,8 +25,8 @@ npm run lint      # Run ESLint
 ```
 /app
   /page.tsx              ✓ Landing page (full — all sections)
-  /acheter/page.tsx      ✓ Sale listings (grid/filter/sort; map is a placeholder)
-  /louer/page.tsx        → Rental listings
+  /logements/page.tsx    ✓ Listings (grid/filter/sort; map is a placeholder)
+  /louer/page.tsx        → Rental listings (separate from /logements)
   /bien/[id]/page.tsx    → Property detail page
   /publier/page.tsx      → Add listing (auth required)
   /dashboard/page.tsx    → Client dashboard (auth required)
@@ -34,19 +34,25 @@ npm run lint      # Run ESLint
 /components
   /layout/navbar.tsx     ✓ Sticky navbar; `initialDark` prop for hero-overlay mode
   /landing/search-bar.tsx ✓ Buy/Rent toggle + type select + location input
+  /landing/browse-section.tsx ✓ Browse by city/type (client component, mode toggle)
   /listing/listing-view.tsx ✓ Full filter bar, property cards, pagination, map placeholder
   /ui                    → Buttons, inputs, badges, cards (not yet created)
   /property              → Gallery, Info, Sticky contact (not yet created)
   /dashboard             → Forms, Stats (not yet created)
+/data
+  /properties.ts         ✓ ALL_PROPERTIES mock array + Property type
+  /cities.ts             ✓ Tunisian cities list
+  /property-types.ts     ✓ TYPES constant (Appartement, Villa, etc.)
 /lib
   /api.ts                → Centralized API calls (not yet created)
   /hooks                 → Custom hooks (not yet created)
   /utils                 → Helpers (not yet created)
 ```
 
-URL patterns: `/acheter`, `/acheter/appartements`, `/acheter/appartements/tunis`, `/louer`, `/bien/[slug-id]`, `/publier`, `/dashboard`, `/admin`.
+URL patterns: `/logements`, `/logements?mode=vente&type=Appartement`, `/louer`, `/bien/[slug-id]`, `/publier`, `/dashboard`, `/admin`.
 
-**Current data**: all listings are hardcoded mock arrays in the component files. When the Laravel backend is ready, extract to `lib/api.ts` and replace with `fetch` / React Query calls.
+**Current data**: all listings are in `data/properties.ts` as a hardcoded mock array. When the Laravel backend is ready, extract to `lib/api.ts` and replace with `fetch` / React Query calls.
+
 
 ## Tailwind CSS v4
 
@@ -75,7 +81,7 @@ Tokens are defined in [app/globals.css](app/globals.css). **All colors use OKLCH
 ```
 
 Fonts loaded in [app/layout.tsx](app/layout.tsx) via `next/font/google`:
-- **Display + body**: `Inter` → CSS var `--font-inter`, class `font-display`
+- **Display + body**: `Inter` → CSS var `--font-inter`; both `--font-display` and `--font-sans` resolve to `var(--font-inter)`
 - Arabic fallback (Phase 2): `Cairo`
 
 Animations `fade-up` and `fade-in` are defined in globals.css and applied inline via `animationName` style props (not Tailwind classes).

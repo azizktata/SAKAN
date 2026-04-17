@@ -13,6 +13,8 @@ export interface Property {
   images: string[]
   features: string[]
   mode: 'vente' | 'location'
+  lat: number
+  lng: number
 }
 
 export const ALL_PROPERTIES: Property[] = [
@@ -25,6 +27,7 @@ export const ALL_PROPERTIES: Property[] = [
     images: ['/prop-6.jpg', '/prop-3.jpg'],
     features: ['Ascenseur', 'Terrasse'],
     mode: 'vente',
+    lat: 36.8190, lng: 10.1658,
   },
   {
     id: 2,
@@ -35,6 +38,7 @@ export const ALL_PROPERTIES: Property[] = [
     images: ['/prop-10.jpg', '/prop-5.jpg', '/prop-1.jpg'],
     features: ['Garage', 'Terrasse', 'Jardin'],
     mode: 'vente',
+    lat: 36.8781, lng: 10.3247,
   },
   {
     id: 3,
@@ -45,6 +49,7 @@ export const ALL_PROPERTIES: Property[] = [
     images: ['/prop-7.jpg', '/prop-1.jpg'],
     features: ['Jardin', 'Terrasse'],
     mode: 'vente',
+    lat: 36.8694, lng: 10.3417,
   },
   {
     id: 4,
@@ -55,6 +60,7 @@ export const ALL_PROPERTIES: Property[] = [
     images: ['/prop-9.jpg', '/prop-2.jpg'],
     features: ['Ascenseur'],
     mode: 'vente',
+    lat: 35.8245, lng: 10.6346,
   },
   {
     id: 5,
@@ -65,6 +71,7 @@ export const ALL_PROPERTIES: Property[] = [
     images: ['/prop-1.jpg', '/prop-7.jpg'],
     features: ['Jardin', 'Terrasse'],
     mode: 'vente',
+    lat: 36.7992, lng: 10.1697,
   },
   {
     id: 6,
@@ -75,6 +82,7 @@ export const ALL_PROPERTIES: Property[] = [
     images: ['/prop-5.jpg', '/prop-10.jpg', '/prop-2.jpg'],
     features: ['Garage', 'Terrasse', 'Jardin', 'Ascenseur'],
     mode: 'vente',
+    lat: 36.8810, lng: 10.3201,
   },
   {
     id: 7,
@@ -85,6 +93,7 @@ export const ALL_PROPERTIES: Property[] = [
     images: ['/prop-3.jpg', '/prop-6.jpg'],
     features: ['Ascenseur', 'Garage'],
     mode: 'vente',
+    lat: 36.8504, lng: 10.1897,
   },
   {
     id: 8,
@@ -95,6 +104,7 @@ export const ALL_PROPERTIES: Property[] = [
     images: ['/prop-2.jpg', '/prop-8.jpg'],
     features: ['Ascenseur', 'Terrasse'],
     mode: 'vente',
+    lat: 36.8352, lng: 10.2317,
   },
   {
     id: 9,
@@ -105,6 +115,7 @@ export const ALL_PROPERTIES: Property[] = [
     images: ['/prop-4.jpg', '/prop-7.jpg'],
     features: ['Jardin', 'Terrasse', 'Garage'],
     mode: 'location',
+    lat: 36.4003, lng: 10.6167,
   },
   {
     id: 10,
@@ -115,6 +126,7 @@ export const ALL_PROPERTIES: Property[] = [
     images: ['/prop-8.jpg', '/prop-3.jpg'],
     features: ['Ascenseur'],
     mode: 'location',
+    lat: 36.8370, lng: 10.2290,
   },
   {
     id: 11,
@@ -125,6 +137,7 @@ export const ALL_PROPERTIES: Property[] = [
     images: ['/prop-10.jpg', '/prop-5.jpg'],
     features: ['Jardin', 'Terrasse', 'Garage'],
     mode: 'location',
+    lat: 36.8710, lng: 10.3440,
   },
   {
     id: 12,
@@ -135,5 +148,6 @@ export const ALL_PROPERTIES: Property[] = [
     images: ['/prop-6.jpg', '/prop-9.jpg'],
     features: ['Ascenseur'],
     mode: 'location',
+    lat: 34.7406, lng: 10.7603,
   },
 ]
