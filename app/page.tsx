@@ -342,15 +342,15 @@ export default function HomePage() {
                 Publiez gratuitement. Simple, rapide, sans commission. Devant des milliers d&apos;acheteurs sérieux.
               </p>
               <div className="flex flex-col sm:flex-row gap-3">
-                <Link href="/publier"
+                <Link href="?publish=open"
                   className="px-7 py-3.5 rounded-full text-sm font-semibold text-center transition-colors hover:bg-white/90"
                   style={{ background: 'var(--color-surface)', color: 'var(--color-primary-dark)' }}>
                   Publier gratuitement
                 </Link>
-                <Link href="/dashboard"
+                <Link href="/espace-client"
                   className="px-7 py-3.5 rounded-full text-sm font-semibold text-white text-center transition-colors hover:bg-white/10"
                   style={{ border: '1px solid oklch(100% 0 0 / 0.2)' }}>
-                  En savoir plus
+                  Mon espace
                 </Link>
               </div>
             </div>
