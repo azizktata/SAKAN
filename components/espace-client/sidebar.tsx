@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useAuth } from '@/lib/auth-context'
 
 const NAV = [
   { label: 'Tableau de bord', href: '/espace-client',           icon: IconGrid },
@@ -43,13 +44,11 @@ function IconUser() {
   )
 }
 
-interface SidebarProps {
-  userName?: string | null
-  userImage?: string | null
-}
-
-export function EspaceClientSidebar({ userName, userImage }: SidebarProps) {
+export function EspaceClientSidebar() {
   const pathname = usePathname()
+  const { user, logout } = useAuth()
+  const userName  = user?.name  ?? null
+  const userImage = user?.image ?? null
 
   function isActive(href: string) {
     if (href === '/espace-client') return pathname === '/espace-client'
@@ -121,7 +120,7 @@ export function EspaceClientSidebar({ userName, userImage }: SidebarProps) {
           Accueil
         </Link>
         <button
-          onClick={() => { /* signOut() in Round 2 */ }}
+          onClick={logout}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors text-left"
           style={{ color: 'oklch(52% 0.15 25)' }}
         >

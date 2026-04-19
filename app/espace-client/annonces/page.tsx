@@ -1,23 +1,45 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { PropertyCardManage, type ManagedProperty } from '@/components/espace-client/property-card-manage'
+import { propertiesApi } from '@/lib/api'
 
-const MOCK: ManagedProperty[] = [
-  { id: '1', title: 'Appartement lumineux au centre-ville', location: 'Centre-ville, Tunis',  price: 285000, mode: 'vente',    status: 'published', image: '/prop-6.jpg'  },
-  { id: '2', title: 'Villa avec jardin privé',              location: 'La Marsa, Tunis',       price: 850000, mode: 'vente',    status: 'draft',     image: '/prop-10.jpg' },
-  { id: '3', title: 'Studio moderne à Sousse',              location: 'Centre, Sousse',         price: 1200,   mode: 'location', status: 'published', image: '/prop-4.jpg'  },
-]
+function toManaged(p: {
+  id: string; title: string; price: number; status: string; transaction_type: string;
+  location?: { name: string } | null; address?: string | null;
+  images?: { url: string; is_cover: boolean }[]
+}): ManagedProperty {
+  const cover = p.images?.find((i) => i.is_cover) ?? p.images?.[0]
+  return {
+    id:       p.id,
+    title:    p.title,
+    location: p.location?.name ?? p.address ?? '—',
+    price:    p.price,
+    mode:     p.transaction_type === 'sale' ? 'vente' : 'location',
+    status:   p.status as ManagedProperty['status'],
+    image:    cover?.url ?? '/prop-1.jpg',
+  }
+}
 
 export default function AnnoncesPage() {
-  const [properties, setProperties] = useState<ManagedProperty[]>(MOCK)
+  const [properties, setProperties] = useState<ManagedProperty[]>([])
+  const [loading, setLoading]       = useState(true)
+
+  useEffect(() => {
+    propertiesApi.myList()
+      .then((res) => setProperties(res.data.map(toManaged)))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
 
   function handleDelete(id: string) {
+    propertiesApi.delete(id).catch(() => {})
     setProperties((prev) => prev.filter((p) => p.id !== id))
   }
 
   function handleToggleStatus(id: string, status: 'published' | 'draft') {
+    propertiesApi.update(id, { status }).catch(() => {})
     setProperties((prev) => prev.map((p) => p.id === id ? { ...p, status } : p))
   }
 
@@ -39,7 +61,12 @@ export default function AnnoncesPage() {
         </Link>
       </div>
 
-      {properties.length === 0 ? (
+      {loading ? (
+        <div className="flex justify-center py-12">
+          <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
+            style={{ borderColor: 'var(--color-primary)', borderTopColor: 'transparent' }} />
+        </div>
+      ) : properties.length === 0 ? (
         <div className="text-center py-20">
           <p className="text-4xl mb-4">🏠</p>
           <p className="font-display font-semibold mb-2" style={{ color: 'var(--color-text)' }}>

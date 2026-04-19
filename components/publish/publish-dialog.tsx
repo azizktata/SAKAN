@@ -6,6 +6,9 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Dialog } from '@/components/ui/dialog'
+import { useAuth } from '@/lib/auth-context'
+import { propertiesApi } from '@/lib/api'
+import { Step0Auth } from './step-0-auth'
 import { Step1Type } from './step-1-type'
 import { Step2Location } from './step-2-location'
 import { Step3Details } from './step-3-details'
@@ -39,7 +42,6 @@ export const wizardSchema = z.object({
 
 export type WizardSchema = z.infer<typeof wizardSchema>
 
-// Fields to validate per step
 const STEP_FIELDS: Record<number, (keyof WizardSchema)[]> = {
   1: ['transactionType', 'propertyType'],
   2: ['address'],
@@ -47,8 +49,6 @@ const STEP_FIELDS: Record<number, (keyof WizardSchema)[]> = {
   4: [],
   5: [],
 }
-
-// ── Step meta ─────────────────────────────────────────────────────────────────
 
 const STEPS = [
   { title: 'Type de bien',      subtitle: 'Que souhaitez-vous faire ?' },
@@ -67,10 +67,11 @@ export function PublishDialog() {
   const searchParams = useSearchParams()
   const router       = useRouter()
   const pathname     = usePathname()
+  const { user, loading: authLoading } = useAuth()
 
   const open = searchParams.get('publish') === 'open'
 
-  const [step, setStep] = useState(1)
+  const [step, setStep]           = useState(1)
   const [submitting, setSubmitting] = useState(false)
 
   const form = useForm<WizardSchema>({
@@ -91,7 +92,6 @@ export function PublishDialog() {
     params.delete('publish')
     const qs = params.toString()
     router.push(`${pathname}${qs ? `?${qs}` : ''}`, { scroll: false })
-    // Reset after close animation
     setTimeout(() => {
       setStep(1)
       form.reset()
@@ -111,86 +111,156 @@ export function PublishDialog() {
     if (step > 1) setStep((s) => s - 1)
   }
 
+  function buildPayload(status: 'draft' | 'published') {
+    const d = form.getValues()
+    return {
+      title:            d.title,
+      description:      d.description,
+      price:            d.price,
+      transaction_type: d.transactionType,
+      property_type:    d.propertyType,
+      status,
+      location_id:      d.locationId,
+      address:          d.address,
+      surface:          d.surface,
+      bedrooms:         d.bedrooms,
+      bathrooms:        d.bathrooms,
+      floor:            d.floor,
+      is_furnished:     d.isFurnished ?? false,
+      amenity_ids:      d.amenityIds ?? [],
+      images:           d.images?.map((img) => ({
+        url:      img.url,
+        position: img.position,
+        is_cover: img.isCover,
+      })) ?? [],
+    }
+  }
+
   async function handleSaveDraft() {
     setSubmitting(true)
-    await new Promise((r) => setTimeout(r, 800)) // placeholder
-    setSubmitting(false)
-    close()
-    router.push('/espace-client')
+    try {
+      await propertiesApi.create(buildPayload('draft'))
+      close()
+      router.push('/espace-client')
+    } catch {
+      // TODO: show toast error
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   async function handlePublish() {
     const valid = await form.trigger()
     if (!valid) return
     setSubmitting(true)
-    await new Promise((r) => setTimeout(r, 800)) // placeholder
-    setSubmitting(false)
-    close()
-    router.push('/espace-client')
+    try {
+      await propertiesApi.create(buildPayload('published'))
+      close()
+      router.push('/espace-client')
+    } catch {
+      // TODO: show toast error
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const meta = STEPS[step - 1]
+  const showAuthGate = !authLoading && !user
 
   return (
     <Dialog open={open} onClose={close} maxWidth="max-w-lg">
       {/* Header */}
       <div className="px-6 pt-6 pb-4 sticky top-0 z-10 rounded-t-3xl" style={{ background: 'var(--color-surface)' }}>
-        {/* Progress dots */}
-        <div className="flex items-center gap-1.5 mb-4">
-          {STEPS.map((_, i) => (
-            <div
-              key={i}
-              className="h-1 rounded-full flex-1 transition-all duration-300"
-              style={{ background: i < step ? 'var(--color-primary)' : 'var(--color-border)' }}
-            />
-          ))}
-        </div>
+        {!showAuthGate && (
+          <>
+            {/* Progress bar */}
+            <div className="flex items-center gap-1.5 mb-4">
+              {STEPS.map((_, i) => (
+                <div
+                  key={i}
+                  className="h-1 rounded-full flex-1 transition-all duration-300"
+                  style={{ background: i < step ? 'var(--color-primary)' : 'var(--color-border)' }}
+                />
+              ))}
+            </div>
 
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider mb-0.5" style={{ color: 'var(--color-muted)' }}>
-              Étape {step} sur {TOTAL}
-            </p>
-            <h2 className="font-display font-semibold text-lg leading-tight" style={{ color: 'var(--color-text)' }}>
-              {meta.title}
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider mb-0.5" style={{ color: 'var(--color-muted)' }}>
+                  Étape {step} sur {TOTAL}
+                </p>
+                <h2 className="font-display font-semibold text-lg leading-tight" style={{ color: 'var(--color-text)' }}>
+                  {meta.title}
+                </h2>
+                <p className="text-sm mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
+                  {meta.subtitle}
+                </p>
+              </div>
+              <button
+                onClick={close}
+                aria-label="Fermer"
+                className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5 transition-colors"
+                style={{ color: 'var(--color-muted)' }}
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </>
+        )}
+
+        {showAuthGate && (
+          <div className="flex items-center justify-between">
+            <h2 className="font-display font-semibold text-lg" style={{ color: 'var(--color-text)' }}>
+              Publier un bien
             </h2>
-            <p className="text-sm mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
-              {meta.subtitle}
-            </p>
+            <button
+              onClick={close}
+              aria-label="Fermer"
+              className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors"
+              style={{ color: 'var(--color-muted)' }}
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
-          <button
-            onClick={close}
-            aria-label="Fermer"
-            className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5 transition-colors"
-            style={{ color: 'var(--color-muted)' }}
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
+        )}
       </div>
 
       {/* Step content */}
       <div className="px-6 pb-2">
-        {step === 1 && <Step1Type form={form} />}
-        {step === 2 && <Step2Location form={form} />}
-        {step === 3 && <Step3Details form={form} />}
-        {step === 4 && <Step4Amenities form={form} />}
-        {step === 5 && <Step5Images form={form} />}
-        {step === 6 && (
-          <Step6Review
-            form={form}
-            onSaveDraft={handleSaveDraft}
-            onPublish={handlePublish}
-            isSubmitting={submitting}
-          />
+        {authLoading ? (
+          <div className="flex justify-center py-12">
+            <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
+              style={{ borderColor: 'var(--color-primary)', borderTopColor: 'transparent' }} />
+          </div>
+        ) : showAuthGate ? (
+          <Step0Auth onClose={close} />
+        ) : (
+          <>
+            {step === 1 && <Step1Type form={form} />}
+            {step === 2 && <Step2Location form={form} />}
+            {step === 3 && <Step3Details form={form} />}
+            {step === 4 && <Step4Amenities form={form} />}
+            {step === 5 && <Step5Images form={form} />}
+            {step === 6 && (
+              <Step6Review
+                form={form}
+                onSaveDraft={handleSaveDraft}
+                onPublish={handlePublish}
+                isSubmitting={submitting}
+              />
+            )}
+          </>
         )}
       </div>
 
-      {/* Footer nav — hidden on step 6 (has its own buttons) */}
-      {step < 6 && (
-        <div className="sticky bottom-0 px-6 pb-6 pt-4 flex items-center justify-between gap-3" style={{ background: 'var(--color-surface)' }}>
+      {/* Footer nav — only when logged in and not on last step */}
+      {!showAuthGate && !authLoading && step < 6 && (
+        <div className="sticky bottom-0 px-6 pb-6 pt-4 flex items-center justify-between gap-3"
+          style={{ background: 'var(--color-surface)' }}>
           {step > 1 ? (
             <button
               type="button"

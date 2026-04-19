@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { PublishDialogClient } from '@/components/publish/publish-dialog-client'
+import { AuthProvider } from '@/lib/auth-context'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -21,8 +22,10 @@ export default function RootLayout({
   return (
     <html lang="fr" className={inter.variable}>
       <body className="min-h-full flex flex-col">
-          {children}
-          <PublishDialogClient />
+          <AuthProvider>
+            {children}
+            <PublishDialogClient />
+          </AuthProvider>
         </body>
     </html>
   )

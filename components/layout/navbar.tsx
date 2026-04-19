@@ -3,16 +3,12 @@
 import Link from 'next/link'
 import { useEffect, useState, Suspense, useRef } from 'react'
 import { usePathname, useSearchParams, useRouter } from 'next/navigation'
+import { useAuth } from '@/lib/auth-context'
 
 const NAV_LINKS = [
   { label: 'Vente',    href: '/logements?mode=vente',    mode: 'vente'    },
   { label: 'Location', href: '/logements?mode=location', mode: 'location' },
 ]
-
-// ── Fake session type (replace with useSession() from next-auth/react in Round 2) ──
-
-type FakeUser = { name: string; image: string | null; role: 'CLIENT' | 'ADMIN' } | null
-const MOCK_USER: FakeUser = null // set to an object to preview logged-in state
 
 // ── Active-aware nav links ─────────────────────────────────────────────────────
 
@@ -109,9 +105,12 @@ function PublishButtonMobile({ scrolled }: { scrolled: boolean }) {
 
 // ── User avatar dropdown (logged-in state) ────────────────────────────────────
 
-function UserMenu({ user, scrolled }: { user: NonNullable<FakeUser>; scrolled: boolean }) {
+type AuthUser = { name: string; image?: string | null; role: string }
+
+function UserMenu({ user, scrolled }: { user: AuthUser; scrolled: boolean }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const { logout } = useAuth()
 
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -125,7 +124,6 @@ function UserMenu({ user, scrolled }: { user: NonNullable<FakeUser>; scrolled: b
 
   return (
     <div ref={ref} className="relative flex items-center gap-3">
-      {/* Espace client button */}
       <Link
         href="/espace-client"
         className="px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200"
@@ -136,7 +134,6 @@ function UserMenu({ user, scrolled }: { user: NonNullable<FakeUser>; scrolled: b
         Espace client
       </Link>
 
-      {/* Avatar button */}
       <button
         onClick={() => setOpen((o) => !o)}
         aria-label="Mon compte"
@@ -153,7 +150,6 @@ function UserMenu({ user, scrolled }: { user: NonNullable<FakeUser>; scrolled: b
         )}
       </button>
 
-      {/* Dropdown */}
       {open && (
         <div
           className="absolute right-0 top-full mt-2 w-52 rounded-2xl shadow-xl py-2 z-50"
@@ -166,7 +162,7 @@ function UserMenu({ user, scrolled }: { user: NonNullable<FakeUser>; scrolled: b
             { label: 'Mon espace',     href: '/espace-client' },
             { label: 'Mes annonces',   href: '/espace-client/annonces' },
             { label: 'Mon profil',     href: '/espace-client/profil' },
-            ...(user.role === 'ADMIN' ? [{ label: 'Administration', href: '/admin' }] : []),
+            ...(user.role === 'admin' ? [{ label: 'Administration', href: '/admin' }] : []),
           ].map(({ label, href }) => (
             <Link
               key={href}
@@ -180,7 +176,7 @@ function UserMenu({ user, scrolled }: { user: NonNullable<FakeUser>; scrolled: b
           ))}
           <div className="border-t mt-1 pt-1" style={{ borderColor: 'var(--color-border)' }}>
             <button
-              onClick={() => { /* signOut() in Round 2 */ setOpen(false) }}
+              onClick={() => { setOpen(false); logout() }}
               className="w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-[oklch(42%_0.09_155_/_0.05)]"
               style={{ color: 'oklch(50% 0.15 25)' }}
             >
@@ -201,7 +197,7 @@ interface NavbarProps {
 
 export function Navbar({ initialDark = false }: NavbarProps) {
   const [scrolled, setScrolled] = useState(!initialDark)
-  const user = MOCK_USER // will be replaced by useSession() in Round 2
+  const { user } = useAuth()
 
   useEffect(() => {
     if (!initialDark) return
