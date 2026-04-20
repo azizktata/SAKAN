@@ -59,8 +59,6 @@ function AuthForm() {
 
   function afterAuth(user: import('@/lib/api').User) {
     setUser(user)
-    // Set a same-domain marker cookie so the middleware can see it on Netlify
-    // (the real sakan_token is httpOnly on the backend domain and not visible here)
     document.cookie = 'sakan_token=1; path=/; max-age=86400; SameSite=Lax'
     window.location.href = redirect
   }

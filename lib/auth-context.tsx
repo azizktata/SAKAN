@@ -19,16 +19,48 @@ const AuthContext = createContext<AuthContextType>({
   setUser: () => {},
 })
 
+const LS_KEY = 'sakan_user'
+
+function readLocalUser(): User | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = localStorage.getItem(LS_KEY)
+    return raw ? (JSON.parse(raw) as User) : null
+  } catch {
+    return null
+  }
+}
+
+function writeLocalUser(user: User | null) {
+  if (typeof window === 'undefined') return
+  if (user) {
+    localStorage.setItem(LS_KEY, JSON.stringify(user))
+  } else {
+    localStorage.removeItem(LS_KEY)
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser]       = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [user,    setUserState] = useState<User | null>(readLocalUser)
+  const [loading, setLoading]   = useState(true)
+
+  function setUser(u: User | null) {
+    setUserState(u)
+    writeLocalUser(u)
+  }
 
   async function fetchMe() {
     try {
       const res = await authApi.me()
       setUser(res.data)
-    } catch {
-      setUser(null)
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status
+      if (status === 401) {
+        // Definite session expiry — clear everything
+        setUser(null)
+        document.cookie = 'sakan_token=; path=/; max-age=0'
+      }
+      // Network/CORS errors: keep the localStorage user intact
     } finally {
       setLoading(false)
     }
@@ -36,7 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     fetchMe()
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const logout = async () => {
     try { await authApi.logout() } catch { /* swallow */ }
