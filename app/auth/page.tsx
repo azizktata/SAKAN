@@ -59,7 +59,7 @@ function AuthForm() {
 
   function afterAuth(user: import('@/lib/api').User) {
     setUser(user)
-    document.cookie = 'sakan_token=1; path=/; max-age=86400; SameSite=Lax'
+    document.cookie = 'sakan_session=1; path=/; max-age=86400; SameSite=None; Secure'
     window.location.href = redirect
   }
 
