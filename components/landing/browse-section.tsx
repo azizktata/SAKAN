@@ -112,7 +112,7 @@ export function BrowseSection() {
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
               <div className="absolute bottom-0 left-0 p-4">
                 <span className="block font-display font-semibold text-lg text-white">{city.name}</span>
-                <span className="text-[0.7rem] text-white/65">{city.count} biens</span>
+                {/* <span className="text-[0.7rem] text-white/65">{city.count} biens</span> */}
               </div>
             </Link>
           ))}

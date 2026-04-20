@@ -11,10 +11,10 @@ const API = process.env.NEXT_PUBLIC_API_URL
 
 async function fetchFeatured(): Promise<Property[]> {
   try {
-    const res = await fetch(`${API}/properties?per_page=3`, { cache: 'no-store' })
+    const res = await fetch(`${API}/properties?per_page=6`, { cache: 'no-store' })
     if (!res.ok) return []
     const data: Paginated<Property> = await res.json()
-    return data.data
+    return data.data.slice(0, 6)
   } catch {
     return []
   }
@@ -354,7 +354,7 @@ export default async function HomePage() {
                 Vous avez un bien à vendre ou à louer&nbsp;?
               </h2>
               <p className="leading-relaxed mb-8 max-w-[44ch]" style={{ color: 'oklch(88% 0.01 250 / 0.65)' }}>
-                Publiez gratuitement. Simple, rapide, sans commission. Devant des milliers d&apos;acheteurs sérieux.
+                Publiez gratuitement. Simple, rapide, sans commission. Devant des milliers d&apos;acheteurs.
               </p>
               <div className="flex flex-col sm:flex-row gap-3">
                 <Link href="?publish=open"

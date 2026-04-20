@@ -8,7 +8,7 @@ export const CITIES = [
   { name: 'Nabeul',         slug: 'nabeul',          count: '118',   img: '/prop-8.jpg' },
   // { name: 'Bizerte',        slug: 'bizerte',         count: '96',    img: '/prop-1.jpg' },
   // { name: 'Gabès',          slug: 'gabes',           count: '74',    img: '/prop-6.jpg' },
-  { name: 'Ariana',         slug: 'ariana',          count: '210',   img: '/prop-3.jpg' },
+  { name: 'Ariana',         slug: 'ariana',          count: '210',   img: '/prop-6.jpg' },
   // { name: 'Ben Arous',      slug: 'ben-arous',       count: '185',   img: '/prop-5.jpg' },
   // { name: 'Manouba',        slug: 'manouba',         count: '92',    img: '/prop-4.jpg' },
   // { name: 'Kairouan',       slug: 'kairouan',        count: '63',    img: '/prop-9.jpg' },
