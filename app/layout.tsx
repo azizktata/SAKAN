@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { PublishDialogClient } from '@/components/publish/publish-dialog-client'
 import { AuthProvider } from '@/lib/auth-context'
+import { ToastProvider } from '@/components/ui/toast'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -23,8 +24,10 @@ export default function RootLayout({
     <html lang="fr" className={inter.variable}>
       <body className="min-h-full flex flex-col">
           <AuthProvider>
-            {children}
-            <PublishDialogClient />
+            <ToastProvider>
+              {children}
+              <PublishDialogClient />
+            </ToastProvider>
           </AuthProvider>
         </body>
     </html>

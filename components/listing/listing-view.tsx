@@ -541,7 +541,7 @@ const modeLabel = mode === 'location' ? 'à louer' : mode === 'vente' ? 'à vend
 
       {/* ── Map view ─────────────────────────────────────────────────────── */}
       {view === 'map' && (
-        <div className="max-w-7xl mx-auto w-full flex" style={{ height: 'calc(100vh - 113px)' }}>
+        <div className="max-w-[1800px] pl-6 mx-auto w-full flex" style={{ height: 'calc(100vh - 113px)' }}>
 
           {/* Left: scrollable card list */}
           <div ref={listPanelRef} className="w-full lg:w-[380px] shrink-0 overflow-y-auto border-r"

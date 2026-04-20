@@ -3,11 +3,22 @@ import Link from 'next/link'
 import { SearchBar } from '@/components/landing/search-bar'
 import { Navbar } from '@/components/layout/navbar'
 import { BrowseSection } from '@/components/landing/browse-section'
-import { ALL_PROPERTIES } from '@/data/properties'
+import type { Property, Paginated } from '@/lib/api'
 
 // ── Data ─────────────────────────────────────────────────────────────────────
 
-const FEATURED = ALL_PROPERTIES.slice(0, 3)
+const API = process.env.NEXT_PUBLIC_API_URL
+
+async function fetchFeatured(): Promise<Property[]> {
+  try {
+    const res = await fetch(`${API}/properties?per_page=3`, { cache: 'no-store' })
+    if (!res.ok) return []
+    const data: Paginated<Property> = await res.json()
+    return data.data
+  } catch {
+    return []
+  }
+}
 
 const VALUES = [
   {
@@ -83,7 +94,13 @@ function IconPin() {
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
-export default function HomePage() {
+const PROPERTY_TYPE_LABELS: Record<string, string> = {
+  apartment: 'Appartement', villa: 'Villa', house: 'Maison',
+  land: 'Terrain', commercial: 'Commercial', office: 'Bureau',
+}
+
+export default async function HomePage() {
+  const featured = await fetchFeatured()
   return (
     <>
       <Navbar initialDark />
@@ -140,9 +157,6 @@ export default function HomePage() {
               ))}
             </div>
 
-            <p className="mt-3 text-[0.7rem]" style={{ color: 'oklch(85% 0.006 155 / 0.5)', ...fadeUp(420).style }}>
-              2&thinsp;890+ biens · Aucuns frais d&apos;agence
-            </p>
           </div>
         </section>
 
@@ -243,48 +257,49 @@ export default function HomePage() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {FEATURED.map((prop) => {
-                const badgeBg = prop.badge === 'Exclusif' ? 'var(--color-accent)' : 'var(--color-primary)'
+              {featured.map((prop) => {
+                const cover = prop.images?.find((i) => i.is_cover) ?? prop.images?.[0]
+                const typeLabel = PROPERTY_TYPE_LABELS[prop.property_type] ?? prop.property_type
+                const modeLabel = prop.transaction_type === 'sale' ? 'Vente' : 'Location'
+                const locationName = prop.location?.name ?? prop.address ?? ''
                 return (
-                  <article key={prop.id}
-                    className="group rounded-3xl overflow-hidden shadow-[0_2px_16px_rgb(0_0_0/0.07)] hover:shadow-[0_12px_40px_rgb(0_0_0/0.13)] transition-shadow duration-300 cursor-pointer"
-                    style={{ background: 'var(--color-surface)' }}>
-                    <div className="relative h-52 overflow-hidden">
-                      <Image src={prop.images[0]} alt={prop.title} fill
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                        className="object-cover transition-transform duration-500 group-hover:scale-105" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
-                      {prop.badge && (
-                        <span className="absolute top-3 left-3 text-xs font-semibold px-2.5 py-1 rounded-full text-white"
-                          style={{ background: badgeBg }}>
-                          {prop.badge}
-                        </span>
-                      )}
-                      <div className="absolute bottom-3 right-3 rounded-md bg-black/30 px-2 py-1 text-[0.7rem] text-white backdrop-blur-sm">
-                        {prop.type} · {prop.mode === 'vente' ? 'Vente' : 'Location'}
+                  <Link key={prop.id} href={`/logements/${prop.id}`}>
+                    <article
+                      className="group rounded-3xl overflow-hidden shadow-[0_2px_16px_rgb(0_0_0/0.07)] hover:shadow-[0_12px_40px_rgb(0_0_0/0.13)] transition-shadow duration-300 cursor-pointer"
+                      style={{ background: 'var(--color-surface)' }}>
+                      <div className="relative h-52 overflow-hidden">
+                        {cover ? (
+                          <Image src={cover.url} alt={prop.title} fill
+                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                            className="object-cover transition-transform duration-500 group-hover:scale-105" />
+                        ) : (
+                          <div className="w-full h-full" style={{ background: 'var(--color-bg)' }} />
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+                        <div className="absolute bottom-3 right-3 rounded-md bg-black/30 px-2 py-1 text-[0.7rem] text-white backdrop-blur-sm">
+                          {typeLabel} · {modeLabel}
+                        </div>
                       </div>
-                    </div>
-                    <div className="p-5">
-                      <h3 className="font-display font-semibold leading-snug mb-1 transition-colors duration-150 group-hover:text-[oklch(48%_0.18_250)]"
-                        style={{ color: 'var(--color-text)' }}>
-                        {prop.title}
-                      </h3>
-                      <p className="text-xs flex items-center gap-1 mb-4" style={{ color: 'var(--color-muted)' }}>
-                        <IconPin /> {prop.location}
-                      </p>
-                      <div className="flex items-center gap-3 text-xs mb-4" style={{ color: 'var(--color-text-secondary)' }}>
-                        <span>{prop.rooms}&thinsp;ch.</span>
-                        <span className="w-px h-3 rounded" style={{ background: 'var(--color-border)' }} aria-hidden="true" />
-                        <span>{prop.bathrooms}&thinsp;sdb.</span>
-                        <span className="w-px h-3 rounded" style={{ background: 'var(--color-border)' }} aria-hidden="true" />
-                        <span>{prop.area}&thinsp;m²</span>
+                      <div className="p-5">
+                        <h3 className="font-display font-semibold leading-snug mb-1 transition-colors duration-150 group-hover:text-[oklch(42%_0.09_155)]"
+                          style={{ color: 'var(--color-text)' }}>
+                          {prop.title}
+                        </h3>
+                        <p className="text-xs flex items-center gap-1 mb-4" style={{ color: 'var(--color-muted)' }}>
+                          <IconPin /> {locationName}
+                        </p>
+                        <div className="flex items-center gap-3 text-xs mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+                          {prop.bedrooms != null && <><span>{prop.bedrooms}&thinsp;ch.</span><span className="w-px h-3 rounded" style={{ background: 'var(--color-border)' }} /></>}
+                          {prop.bathrooms != null && <><span>{prop.bathrooms}&thinsp;sdb.</span><span className="w-px h-3 rounded" style={{ background: 'var(--color-border)' }} /></>}
+                          {prop.surface != null && <span>{prop.surface}&thinsp;m²</span>}
+                        </div>
+                        <p className="font-display font-bold tabular-nums" style={{ fontSize: '1.25rem', color: 'var(--color-text)' }}>
+                          {fmt(prop.price)}{' '}
+                          <span className="text-sm font-normal" style={{ color: 'var(--color-muted)' }}>DT</span>
+                        </p>
                       </div>
-                      <p className="font-display font-bold tabular-nums" style={{ fontSize: '1.25rem', color: 'var(--color-text)' }}>
-                        {fmt(prop.price)}{' '}
-                        <span className="text-sm font-normal" style={{ color: 'var(--color-muted)' }}>DT</span>
-                      </p>
-                    </div>
-                  </article>
+                    </article>
+                  </Link>
                 )
               })}
             </div>

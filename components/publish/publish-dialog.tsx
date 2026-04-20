@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Dialog } from '@/components/ui/dialog'
+import { useToast } from '@/components/ui/toast'
 import { useAuth } from '@/lib/auth-context'
 import { propertiesApi, uploadApi, referenceApi, type Location, type Amenity, type Property } from '@/lib/api'
 import { Step0Auth } from './step-0-auth'
@@ -70,6 +71,7 @@ export function PublishDialog() {
   const router       = useRouter()
   const pathname     = usePathname()
   const { user, loading: authLoading } = useAuth()
+  const toast = useToast()
 
   const open   = searchParams.get('publish') === 'open'
   const editId = searchParams.get('edit') ?? undefined
@@ -205,13 +207,15 @@ export function PublishDialog() {
       const payload = buildPayload('draft', images)
       if (editId) {
         await propertiesApi.update(editId, payload)
+        toast('Brouillon mis à jour.')
       } else {
         await propertiesApi.create(payload)
+        toast('Brouillon enregistré.')
       }
       close()
       router.push('/espace-client/annonces')
     } catch {
-      // TODO: show toast error
+      toast('Une erreur est survenue. Réessayez.', 'error')
     } finally {
       setSubmitting(false)
     }
@@ -228,13 +232,15 @@ export function PublishDialog() {
       const payload = buildPayload('published', images)
       if (editId) {
         await propertiesApi.update(editId, payload)
+        toast('Bien mis à jour et publié.')
       } else {
         await propertiesApi.create(payload)
+        toast('Bien publié avec succès !')
       }
       close()
       router.push('/espace-client/annonces')
     } catch {
-      // TODO: show toast error
+      toast('Une erreur est survenue. Réessayez.', 'error')
     } finally {
       setSubmitting(false)
     }
