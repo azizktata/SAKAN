@@ -57,12 +57,19 @@ function AuthForm() {
     resolver: zodResolver(registerSchema),
   })
 
+  function afterAuth(user: import('@/lib/api').User) {
+    setUser(user)
+    // Set a same-domain marker cookie so the middleware can see it on Netlify
+    // (the real sakan_token is httpOnly on the backend domain and not visible here)
+    document.cookie = 'sakan_token=1; path=/; max-age=86400; SameSite=Lax'
+    window.location.href = redirect
+  }
+
   async function onLogin(data: LoginForm) {
     setError(null)
     try {
       const res = await authApi.login(data)
-      setUser(res.data.user)
-      router.push(redirect)
+      afterAuth(res.data.user)
     } catch {
       setError('Identifiants invalides. Vérifiez votre email et mot de passe.')
     }
@@ -72,8 +79,7 @@ function AuthForm() {
     setError(null)
     try {
       const res = await authApi.register(data)
-      setUser(res.data.user)
-      router.push(redirect)
+      afterAuth(res.data.user)
     } catch {
       setError("Erreur lors de la création du compte. Cet email est peut-être déjà utilisé.")
     }

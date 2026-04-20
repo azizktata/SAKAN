@@ -41,6 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     try { await authApi.logout() } catch { /* swallow */ }
     setUser(null)
+    document.cookie = 'sakan_token=; path=/; max-age=0'
     window.location.href = '/'
   }
 
