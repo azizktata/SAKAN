@@ -3,10 +3,10 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Navbar } from '@/components/layout/navbar'
-import { ALL_PROPERTIES, type Property } from '@/data/properties'
+import { propertiesApi, referenceApi, type Property, type Location, type Amenity } from '@/lib/api'
 import { TYPES } from '@/data/property-types'
 
 const MapView = dynamic(
@@ -16,19 +16,25 @@ const MapView = dynamic(
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const STATUSES = ['Tous', 'Neuf', 'Ancien']
-const LIFESTYLES = ['Ascenseur', 'Garage', 'Terrasse', 'Meublé', 'Proche mosquée', 'École', 'Transports']
-
-const SORT_OPTIONS = [
-  { value: 'recent',     label: 'Plus récents'       },
-  { value: 'price-asc',  label: 'Prix croissant'     },
-  { value: 'price-desc', label: 'Prix décroissant'   },
-  { value: 'area',       label: 'Surface'             },
-]
-
-function fmt(n: number) {
-  return n.toLocaleString('fr-TN')
+const TYPE_API: Record<string, string | undefined> = {
+  'Tous': undefined,
+  'Appartement': 'apartment',
+  'Villa': 'villa',
+  'Maison': 'house',
 }
+
+const PROPERTY_TYPE_LABELS: Record<string, string> = {
+  apartment: 'Appartement',
+  villa: 'Villa',
+  house: 'Maison',
+  land: 'Terrain',
+  commercial: 'Commercial',
+  office: 'Bureau',
+}
+
+const PER_PAGE = 9
+
+function fmt(n: number) { return n.toLocaleString('fr-TN') }
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 
@@ -89,7 +95,7 @@ function IconChevronRight() {
 
 export function ListingView() {
   const searchParams = useSearchParams()
-  const router = useRouter()
+  const router       = useRouter()
 
   const [type,        setType]        = useState(() => searchParams.get('type') ?? 'Tous')
   const [mode,        setMode]        = useState<'vente' | 'location' | 'tous'>(() => {
@@ -99,45 +105,96 @@ export function ListingView() {
   const [view,        setView]        = useState<'grid' | 'map'>(() =>
     searchParams.get('view') === 'map' ? 'map' : 'grid'
   )
-  const [location,    setLocation]    = useState(() => searchParams.get('location') ?? '')
-  const [sort,        setSort]        = useState(() => searchParams.get('sort') ?? 'recent')
-  const [status,      setStatus]      = useState('Tous')
+  const [locationId,  setLocationId]  = useState(() => searchParams.get('locationId') ?? '')
   const [minPrice,    setMinPrice]    = useState(() => searchParams.get('minPrice') ?? '')
   const [maxPrice,    setMaxPrice]    = useState(() => searchParams.get('maxPrice') ?? '')
-  const [minArea,     setMinArea]     = useState('')
-  const [rooms,       setRooms]       = useState(() => Number(searchParams.get('rooms') ?? 0))
-  const [features,    setFeatures]    = useState<string[]>([])
+  const [bedrooms,    setBedrooms]    = useState(() => Number(searchParams.get('bedrooms') ?? '0'))
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [page,        setPage]        = useState(1)
-  const [hoveredId,   setHoveredId]   = useState<number | null>(null)
+  const [hoveredId,   setHoveredId]   = useState<string | null>(null)
+
+  const [properties,  setProperties]  = useState<Property[]>([])
+  const [total,       setTotal]       = useState(0)
+  const [lastPage,    setLastPage]    = useState(1)
+  const [loading,          setLoading]          = useState(true)
+  const [locations,        setLocations]        = useState<Location[]>([])
+  const [allAmenities,     setAllAmenities]     = useState<Amenity[]>([])
+  const [selectedAmenities,setSelectedAmenities]= useState<string[]>(() =>
+    (searchParams.get('amenities') ?? '').split(',').filter(Boolean)
+  )
+
   const listPanelRef = useRef<HTMLDivElement>(null)
 
-  function handleSelectOnMap(id: number) {
+  useEffect(() => {
+    referenceApi.locations().then((r) => setLocations(r.data)).catch(() => {})
+    referenceApi.amenities().then((r) => setAllAmenities(r.data)).catch(() => {})
+  }, [])
+
+  function handleSelectOnMap(id: string) {
     setHoveredId(id)
     const card = document.getElementById(`map-card-${id}`)
     card?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   }
-  const PER_PAGE = 9
 
-  // Sync filter state whenever the URL changes (e.g. navbar Vente/Location links)
+  // Sync filter state from URL changes
   useEffect(() => {
     const p = searchParams.get('mode')
     setMode((p === 'vente' || p === 'location') ? p : 'tous')
     const t = searchParams.get('type')
     setType(t && TYPES.includes(t as typeof TYPES[number]) ? t : 'Tous')
-    setLocation(searchParams.get('location') ?? '')
+    setLocationId(searchParams.get('locationId') ?? '')
     setView(searchParams.get('view') === 'map' ? 'map' : 'grid')
-    setSort(searchParams.get('sort') ?? 'recent')
     setMinPrice(searchParams.get('minPrice') ?? '')
     setMaxPrice(searchParams.get('maxPrice') ?? '')
-    setRooms(Number(searchParams.get('rooms') ?? 0))
+    setBedrooms(Number(searchParams.get('bedrooms') ?? '0'))
+    setSelectedAmenities((searchParams.get('amenities') ?? '').split(',').filter(Boolean))
     setPage(1)
   }, [searchParams])
+
+  // Fetch from API whenever filters or page change
+  useEffect(() => {
+    let cancelled = false
+    const isFirstPage = page === 1
+
+    if (isFirstPage) {
+      setLoading(true)
+      setProperties([])
+    }
+
+    const timer = setTimeout(() => {
+      propertiesApi.list({
+        transaction_type: mode === 'vente' ? 'sale' : mode === 'location' ? 'rent' : undefined,
+        property_type:    TYPE_API[type],
+        location_id:      locationId || undefined,
+        min_price:        minPrice ? Number(minPrice) : undefined,
+        max_price:        maxPrice ? Number(maxPrice) : undefined,
+        bedrooms:         bedrooms > 0 ? bedrooms : undefined,
+        amenities:        selectedAmenities.length > 0 ? selectedAmenities.join(',') : undefined,
+        page,
+        per_page:         PER_PAGE,
+      })
+        .then((res) => {
+          if (cancelled) return
+          const d = res.data
+          setProperties((prev) => isFirstPage ? d.data : [...prev, ...d.data])
+          setTotal(d.total)
+          setLastPage(d.last_page)
+        })
+        .catch(() => {
+          if (!cancelled && isFirstPage) setProperties([])
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false)
+        })
+    }, 300)
+
+    return () => { cancelled = true; clearTimeout(timer) }
+  }, [mode, type, locationId, minPrice, maxPrice, bedrooms, selectedAmenities, page])
 
   function updateParams(patch: Record<string, string | null>) {
     const params = new URLSearchParams(searchParams.toString())
     Object.entries(patch).forEach(([k, v]) => {
-      if (!v || v === 'Tous' || v === 'tous' || v === 'recent' || v === '0') {
+      if (!v || v === 'Tous' || v === 'tous' || v === '0') {
         params.delete(k)
       } else {
         params.set(k, v)
@@ -147,51 +204,26 @@ export function ListingView() {
     router.replace(qs ? `/logements?${qs}` : '/logements', { scroll: false })
   }
 
-  const toggleFeature = (f: string) =>
-    setFeatures((prev) => prev.includes(f) ? prev.filter((x) => x !== f) : [...prev, f])
-
-  const filtered = useMemo(() => {
-    let list = [...ALL_PROPERTIES]
-    if (mode !== 'tous')         list = list.filter((p) => p.mode === mode)
-    if (type !== 'Tous')         list = list.filter((p) => p.type === type)
-    if (status !== 'Tous')       list = list.filter((p) => p.status === status)
-    if (location.trim())         list = list.filter((p) => p.location.toLowerCase().includes(location.toLowerCase()))
-    if (minPrice)                list = list.filter((p) => p.price >= Number(minPrice))
-    if (maxPrice)                list = list.filter((p) => p.price <= Number(maxPrice))
-    if (minArea)                 list = list.filter((p) => p.area >= Number(minArea))
-    if (rooms > 0)               list = list.filter((p) => p.rooms >= rooms)
-    if (features.length > 0)     list = list.filter((p) => features.every((f) => p.features.includes(f)))
-
-    switch (sort) {
-      case 'price-asc':  list.sort((a, b) => a.price - b.price); break
-      case 'price-desc': list.sort((a, b) => b.price - a.price); break
-      case 'area':       list.sort((a, b) => b.area - a.area);   break
-    }
-    return list
-  }, [mode, type, status, location, minPrice, maxPrice, minArea, rooms, features, sort])
-
-  const paginated = filtered.slice(0, page * PER_PAGE)
+  const locationName = locations.find((l) => String(l.id) === locationId)?.name ?? ''
 
   const activeFilters = [
     mode !== 'tous' && (mode === 'vente' ? 'Vente' : 'Location'),
     type !== 'Tous' && type,
-    status !== 'Tous' && status,
-    location.trim() && `"${location.trim()}"`,
-    minPrice && `≥ ${fmt(Number(minPrice))} DT`,
-    maxPrice && `≤ ${fmt(Number(maxPrice))} DT`,
-    minArea && `≥ ${minArea} m²`,
-    rooms > 0 && `${rooms}+ ch.`,
-    ...features,
+    locationName    && locationName,
+    minPrice        && `≥ ${fmt(Number(minPrice))} DT`,
+    maxPrice        && `≤ ${fmt(Number(maxPrice))} DT`,
+    bedrooms > 0    && `${bedrooms}+ ch.`,
+    selectedAmenities.length > 0 && `${selectedAmenities.length} équipement${selectedAmenities.length > 1 ? 's' : ''}`,
   ].filter(Boolean) as string[]
 
   function resetAll() {
-    setMode('tous'); setType('Tous'); setStatus('Tous'); setLocation('')
-    setMinPrice(''); setMaxPrice(''); setMinArea('')
-    setRooms(0); setFeatures([])
+    setMode('tous'); setType('Tous'); setLocationId('')
+    setMinPrice(''); setMaxPrice(''); setBedrooms(0); setSelectedAmenities([]); setPage(1)
     router.replace('/logements', { scroll: false })
   }
 
-  const modeLabel = mode === 'location' ? 'à louer' : mode === 'vente' ? 'à vendre' : 'disponibles'
+const modeLabel = mode === 'location' ? 'à louer' : mode === 'vente' ? 'à vendre' : 'disponibles'
+  const hasMore   = page < lastPage
 
   return (
     <div className="min-h-screen pt-16" style={{ background: 'var(--color-bg)' }}>
@@ -205,10 +237,10 @@ export function ListingView() {
       >
         <div className="max-w-7xl mx-auto px-6 py-3 flex flex-wrap items-center gap-2.5">
 
-          {/* Vente / Location / Tous — desktop only */}
+          {/* Vente / Location / Tous — desktop */}
           <div className="hidden md:flex rounded-xl overflow-hidden border" style={{ borderColor: 'var(--color-border)' }}>
             {(['tous', 'vente', 'location'] as const).map((m) => (
-              <button key={m} onClick={() => { setMode(m); updateParams({ mode: m }) }}
+              <button key={m} onClick={() => { setMode(m); setPage(1); updateParams({ mode: m }) }}
                 className="px-3 py-1.5 text-sm font-medium transition-colors duration-150 capitalize"
                 style={mode === m
                   ? { background: 'var(--color-primary)', color: '#fff' }
@@ -218,44 +250,48 @@ export function ListingView() {
             ))}
           </div>
 
-          {/* Type — desktop only */}
-          <div className="hidden md:flex rounded-xl overflow-hidden border" style={{ borderColor: 'var(--color-border)' }}>
-            {TYPES.map((t) => (
-              <button key={t} onClick={() => { setType(t); updateParams({ type: t }) }}
-                className="px-3 py-1.5 text-sm font-medium transition-colors duration-150"
-                style={type === t
-                  ? { background: 'var(--color-primary)', color: '#fff' }
-                  : { background: 'transparent', color: 'var(--color-text-secondary)' }}>
-                {t}
-              </button>
-            ))}
-          </div>
-
-          {/* Location — desktop only */}
+          {/* Type — desktop */}
           <div className="hidden md:flex">
-            <input
-              type="text"
-              placeholder="Ville, quartier…"
-              value={location}
-              onChange={(e) => { setLocation(e.target.value); updateParams({ location: e.target.value }) }}
-              className="rounded-xl border pl-3 pr-3 py-1.5 text-sm w-40 focus:outline-none focus:ring-2"
+            <select
+              value={type}
+              onChange={(e) => { setType(e.target.value); setPage(1); updateParams({ type: e.target.value }) }}
+              className="rounded-xl border pl-3 pr-3 py-1.5 text-sm w-44 focus:outline-none focus:ring-2"
               style={{
-                borderColor: location ? 'var(--color-primary)' : 'var(--color-border)',
-                color: 'var(--color-text)',
+                borderColor: type !== 'Tous' ? 'var(--color-primary)' : 'var(--color-border)',
+                color: type !== 'Tous' ? 'var(--color-text)' : 'var(--color-muted)',
                 background: 'var(--color-bg)',
-              } as React.CSSProperties}
-            />
+              }}>
+              {TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
           </div>
 
-          {/* Budget — desktop only */}
+          {/* Location search — desktop */}
+          <div className="hidden md:flex">
+            <select
+              value={locationId}
+              onChange={(e) => { setLocationId(e.target.value); setPage(1); updateParams({ locationId: e.target.value }) }}
+              className="rounded-xl border pl-3 pr-3 py-1.5 text-sm w-44 focus:outline-none focus:ring-2"
+              style={{
+                borderColor: locationId ? 'var(--color-primary)' : 'var(--color-border)',
+                color: locationId ? 'var(--color-text)' : 'var(--color-muted)',
+                background: 'var(--color-bg)',
+              }}>
+              <option value="">Toutes les villes</option>
+              {locations.map((l) => (
+                <option key={l.id} value={String(l.id)}>{l.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Budget — desktop */}
           <div className="hidden md:flex items-center gap-1">
             <input type="number" placeholder="Prix min" value={minPrice}
-              onChange={(e) => { setMinPrice(e.target.value); updateParams({ minPrice: e.target.value }) }}
+              onChange={(e) => { setMinPrice(e.target.value); setPage(1); updateParams({ minPrice: e.target.value }) }}
               className="rounded-xl border px-3 py-1.5 text-sm w-28 focus:outline-none focus:ring-2"
               style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }} />
             <span className="text-xs" style={{ color: 'var(--color-muted)' }}>—</span>
             <input type="number" placeholder="Prix max" value={maxPrice}
-              onChange={(e) => { setMaxPrice(e.target.value); updateParams({ maxPrice: e.target.value }) }}
+              onChange={(e) => { setMaxPrice(e.target.value); setPage(1); updateParams({ maxPrice: e.target.value }) }}
               className="rounded-xl border px-3 py-1.5 text-sm w-28 focus:outline-none focus:ring-2"
               style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }} />
           </div>
@@ -279,13 +315,6 @@ export function ListingView() {
 
           <div className="flex-1" />
 
-          {/* Sort */}
-          {/* <select value={sort} onChange={(e) => { setSort(e.target.value); updateParams({ sort: e.target.value }) }}
-            className="rounded-xl border px-3 py-1.5 text-sm appearance-none focus:outline-none"
-            style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }}>
-            {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select> */}
-
           {/* View toggle */}
           <div className="flex rounded-xl overflow-hidden border" style={{ borderColor: 'var(--color-border)' }}>
             <button onClick={() => { setView('grid'); updateParams({ view: 'grid' }) }}
@@ -305,18 +334,16 @@ export function ListingView() {
 
         {/* Advanced filters panel */}
         {filtersOpen && (
-          <div className="border-t" style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}>
+          <div className="border-t overflow-y-auto" style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)', maxHeight: 'calc(100dvh - 130px)' }}>
             <div className="max-w-7xl mx-auto px-6 py-5 space-y-5">
 
-              {/* ── Mobile-only: primary filters ────────────────────────── */}
+              {/* Mobile-only primary filters */}
               <div className="grid grid-cols-1 gap-5 md:hidden">
-
-                {/* Mode */}
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wider mb-2.5" style={{ color: 'var(--color-muted)' }}>Mode</p>
                   <div className="flex rounded-xl overflow-hidden border w-fit" style={{ borderColor: 'var(--color-border)' }}>
                     {(['tous', 'vente', 'location'] as const).map((m) => (
-                      <button key={m} onClick={() => { setMode(m); updateParams({ mode: m }) }}
+                      <button key={m} onClick={() => { setMode(m); setPage(1); updateParams({ mode: m }) }}
                         className="px-4 py-2 text-sm font-medium transition-colors"
                         style={mode === m
                           ? { background: 'var(--color-primary)', color: '#fff' }
@@ -327,95 +354,68 @@ export function ListingView() {
                   </div>
                 </div>
 
-                {/* Type */}
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wider mb-2.5" style={{ color: 'var(--color-muted)' }}>Type de bien</p>
-                  <div className="flex flex-wrap gap-2">
-                    {TYPES.map((t) => (
-                      <button key={t} onClick={() => { setType(t); updateParams({ type: t }) }}
-                        className="px-4 py-2 rounded-xl text-sm font-medium border transition-colors"
-                        style={type === t
-                          ? { background: 'var(--color-primary)', color: '#fff', borderColor: 'var(--color-primary)' }
-                          : { borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
-                        {t}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Localisation */}
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider mb-2.5" style={{ color: 'var(--color-muted)' }}>Localisation</p>
-                  <input
-                    type="text"
-                    placeholder="Ville, quartier…"
-                    value={location}
-                    onChange={(e) => { setLocation(e.target.value); updateParams({ location: e.target.value }) }}
+                  <select
+                    value={type}
+                    onChange={(e) => { setType(e.target.value); setPage(1); updateParams({ type: e.target.value }) }}
                     className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2"
                     style={{
-                      borderColor: location ? 'var(--color-primary)' : 'var(--color-border)',
-                      color: 'var(--color-text)',
+                      borderColor: type !== 'Tous' ? 'var(--color-primary)' : 'var(--color-border)',
+                      color: type !== 'Tous' ? 'var(--color-text)' : 'var(--color-muted)',
                       background: 'var(--color-bg)',
-                    } as React.CSSProperties}
-                  />
+                    }}>
+                    {TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                  </select>
                 </div>
 
-                {/* Budget */}
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider mb-2.5" style={{ color: 'var(--color-muted)' }}>Localisation</p>
+                  <select
+                    value={locationId}
+                    onChange={(e) => { setLocationId(e.target.value); setPage(1); updateParams({ locationId: e.target.value }) }}
+                    className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2"
+                    style={{
+                      borderColor: locationId ? 'var(--color-primary)' : 'var(--color-border)',
+                      color: locationId ? 'var(--color-text)' : 'var(--color-muted)',
+                      background: 'var(--color-bg)',
+                    }}>
+                    <option value="">Toutes les villes</option>
+                    {locations.map((l) => (
+                      <option key={l.id} value={String(l.id)}>{l.name}</option>
+                    ))}
+                  </select>
+                </div>
+
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wider mb-2.5" style={{ color: 'var(--color-muted)' }}>Budget (DT)</p>
                   <div className="flex items-center gap-2">
                     <input type="number" placeholder="Min" value={minPrice}
-                      onChange={(e) => { setMinPrice(e.target.value); updateParams({ minPrice: e.target.value }) }}
+                      onChange={(e) => { setMinPrice(e.target.value); setPage(1); updateParams({ minPrice: e.target.value }) }}
                       className="flex-1 rounded-xl border px-3 py-2 text-sm focus:outline-none"
                       style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }} />
                     <span className="text-xs shrink-0" style={{ color: 'var(--color-muted)' }}>—</span>
                     <input type="number" placeholder="Max" value={maxPrice}
-                      onChange={(e) => { setMaxPrice(e.target.value); updateParams({ maxPrice: e.target.value }) }}
+                      onChange={(e) => { setMaxPrice(e.target.value); setPage(1); updateParams({ maxPrice: e.target.value }) }}
                       className="flex-1 rounded-xl border px-3 py-2 text-sm focus:outline-none"
                       style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }} />
                   </div>
                 </div>
               </div>
 
-              {/* Mobile separator */}
               <div className="border-t md:hidden" style={{ borderColor: 'var(--color-border)' }} />
 
-              {/* ── Advanced filters (always) ────────────────────────────── */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-5">
-
-                {/* État */}
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider mb-2.5" style={{ color: 'var(--color-muted)' }}>État</p>
-                  <div className="flex flex-wrap gap-2">
-                    {STATUSES.map((s) => (
-                      <button key={s} onClick={() => setStatus(s)}
-                        className="px-3 py-1 rounded-full text-xs font-medium border transition-colors"
-                        style={status === s
-                          ? { background: 'var(--color-primary)', color: '#fff', borderColor: 'var(--color-primary)' }
-                          : { borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Surface */}
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider mb-2.5" style={{ color: 'var(--color-muted)' }}>Surface (m²)</p>
-                  <input type="number" placeholder="Min. surface" value={minArea}
-                    onChange={(e) => setMinArea(e.target.value)}
-                    className="w-full rounded-xl border px-3 py-1.5 text-sm focus:outline-none"
-                    style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }} />
-                </div>
+              {/* Advanced filters */}
+              <div className="space-y-5">
 
                 {/* Chambres */}
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wider mb-2.5" style={{ color: 'var(--color-muted)' }}>Chambres min.</p>
                   <div className="flex gap-2">
                     {[0, 1, 2, 3, 4, 5].map((n) => (
-                      <button key={n} onClick={() => { setRooms(n); updateParams({ rooms: String(n) }) }}
+                      <button key={n} onClick={() => { setBedrooms(n); setPage(1); updateParams({ bedrooms: String(n) }) }}
                         className="w-8 h-8 rounded-full text-xs font-semibold border transition-colors"
-                        style={rooms === n
+                        style={bedrooms === n
                           ? { background: 'var(--color-primary)', color: '#fff', borderColor: 'var(--color-primary)' }
                           : { borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
                         {n === 0 ? 'T' : `${n}+`}
@@ -424,27 +424,40 @@ export function ListingView() {
                   </div>
                 </div>
 
-                {/* Critères lifestyle */}
-                <div className="col-span-2 md:col-span-1">
-                  <p className="text-xs font-semibold uppercase tracking-wider mb-2.5" style={{ color: 'var(--color-muted)' }}>Critères</p>
-                  <div className="flex flex-wrap gap-2">
-                    {LIFESTYLES.map((f) => (
-                      <button key={f} onClick={() => toggleFeature(f)}
-                        className="px-3 py-1 rounded-full text-xs font-medium border transition-colors"
-                        style={features.includes(f)
-                          ? { background: 'var(--color-primary)', color: '#fff', borderColor: 'var(--color-primary)' }
-                          : { borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
-                        {f}
-                      </button>
-                    ))}
+                {/* Amenities */}
+                {allAmenities.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider mb-2.5" style={{ color: 'var(--color-muted)' }}>Équipements</p>
+                    <div className="flex flex-wrap gap-2">
+                      {allAmenities.map((a) => {
+                        const active = selectedAmenities.includes(String(a.id))
+                        return (
+                          <button key={a.id}
+                            onClick={() => {
+                              const next = active
+                                ? selectedAmenities.filter((x) => x !== String(a.id))
+                                : [...selectedAmenities, String(a.id)]
+                              setSelectedAmenities(next)
+                              setPage(1)
+                              updateParams({ amenities: next.join(',') || null })
+                            }}
+                            className="px-3 py-1.5 rounded-full text-xs font-medium border transition-colors"
+                            style={active
+                              ? { background: 'var(--color-primary)', color: '#fff', borderColor: 'var(--color-primary)' }
+                              : { borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)', background: 'transparent' }}>
+                            {a.name}
+                          </button>
+                        )
+                      })}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
               {/* Footer: count + reset */}
               <div className="pt-1 flex items-center justify-between">
                 <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                  {filtered.length} résultat{filtered.length !== 1 ? 's' : ''}
+                  {loading ? '…' : `${total} résultat${total !== 1 ? 's' : ''}`}
                 </p>
                 {activeFilters.length > 0 && (
                   <button onClick={resetAll}
@@ -466,7 +479,9 @@ export function ListingView() {
           {/* Result count + active chips */}
           <div className="flex flex-wrap items-center gap-3 mb-6">
             <h1 className="font-display font-semibold" style={{ fontSize: '1.25rem', color: 'var(--color-text)' }}>
-              {filtered.length.toLocaleString('fr-TN')} bien{filtered.length !== 1 ? 's' : ''} {modeLabel}
+              {loading && properties.length === 0
+                ? 'Recherche en cours…'
+                : `${total.toLocaleString('fr-TN')} bien${total !== 1 ? 's' : ''} ${modeLabel}`}
             </h1>
             {activeFilters.map((f) => (
               <span key={f}
@@ -477,7 +492,12 @@ export function ListingView() {
             ))}
           </div>
 
-          {filtered.length === 0 ? (
+          {loading && properties.length === 0 ? (
+            <div className="flex justify-center py-24">
+              <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
+                style={{ borderColor: 'var(--color-primary)', borderTopColor: 'transparent' }} />
+            </div>
+          ) : properties.length === 0 ? (
             <div className="py-24 text-center">
               <p className="text-lg font-display font-semibold mb-2" style={{ color: 'var(--color-text)' }}>
                 Aucun résultat
@@ -493,26 +513,33 @@ export function ListingView() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {paginated.map((prop) => (
+              {properties.map((prop) => (
                 <PropertyCard key={prop.id} prop={prop} />
               ))}
             </div>
           )}
 
           {/* Load more */}
-          {paginated.length < filtered.length && (
+          {hasMore && !loading && (
             <div className="mt-10 text-center">
               <button onClick={() => setPage((p) => p + 1)}
                 className="px-8 py-3 rounded-full text-sm font-semibold border transition-all hover:shadow-md"
                 style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)', background: 'transparent' }}>
-                Voir plus de biens ({filtered.length - paginated.length} restants)
+                Voir plus de biens ({total - properties.length} restants)
               </button>
+            </div>
+          )}
+
+          {loading && properties.length > 0 && (
+            <div className="flex justify-center mt-8">
+              <div className="w-6 h-6 rounded-full border-2 border-t-transparent animate-spin"
+                style={{ borderColor: 'var(--color-primary)', borderTopColor: 'transparent' }} />
             </div>
           )}
         </div>
       )}
 
-      {/* ── Map view — full-width split ───────────────────────────────────── */}
+      {/* ── Map view ─────────────────────────────────────────────────────── */}
       {view === 'map' && (
         <div className="max-w-7xl mx-auto w-full flex" style={{ height: 'calc(100vh - 113px)' }}>
 
@@ -520,7 +547,12 @@ export function ListingView() {
           <div ref={listPanelRef} className="w-full lg:w-[380px] shrink-0 overflow-y-auto border-r"
             style={{ borderColor: 'var(--color-border)' }}>
             <div className="p-3 space-y-2.5">
-              {filtered.length === 0 ? (
+              {loading && properties.length === 0 ? (
+                <div className="flex justify-center py-16">
+                  <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
+                    style={{ borderColor: 'var(--color-primary)', borderTopColor: 'transparent' }} />
+                </div>
+              ) : properties.length === 0 ? (
                 <div className="py-16 text-center px-4">
                   <p className="font-display font-semibold mb-2" style={{ color: 'var(--color-text)' }}>
                     Aucun résultat
@@ -535,7 +567,7 @@ export function ListingView() {
                   </button>
                 </div>
               ) : (
-                filtered.map((prop) => (
+                properties.map((prop) => (
                   <div key={prop.id}
                     id={`map-card-${prop.id}`}
                     className="rounded-2xl overflow-hidden transition-all"
@@ -554,7 +586,7 @@ export function ListingView() {
           {/* Right: Leaflet map (desktop only) */}
           <div className="hidden lg:block flex-1">
             <MapView
-              properties={filtered}
+              properties={properties}
               hoveredId={hoveredId}
               onHover={setHoveredId}
               onSelect={handleSelectOnMap}
@@ -569,19 +601,23 @@ export function ListingView() {
 // ── Property card ─────────────────────────────────────────────────────────────
 
 function PropertyCard({ prop }: { prop: Property }) {
+  const images     = prop.images ?? []
   const [imgIdx, setImgIdx] = useState(0)
-  const hasMultiple = prop.images.length > 1
-  const badgeBg = prop.badge === 'Exclusif' ? 'var(--color-accent)' : 'var(--color-primary)'
-  const priceLabel = prop.mode === 'location' ? '/mois' : 'DT'
+  const hasMultiple = images.length > 1
+  const cover      = images.find((i) => i.is_cover) ?? images[0]
+  const currentImg = images[imgIdx] ?? cover
+  const priceLabel = prop.transaction_type === 'rent' ? '/mois' : 'DT'
+  const locationName = prop.location?.name ?? prop.address ?? ''
+  const typeLabel  = PROPERTY_TYPE_LABELS[prop.property_type] ?? prop.property_type
 
   function prev(e: React.MouseEvent) {
     e.preventDefault()
-    setImgIdx((i) => (i - 1 + prop.images.length) % prop.images.length)
+    setImgIdx((i) => (i - 1 + images.length) % images.length)
   }
 
   function next(e: React.MouseEvent) {
     e.preventDefault()
-    setImgIdx((i) => (i + 1) % prop.images.length)
+    setImgIdx((i) => (i + 1) % images.length)
   }
 
   return (
@@ -591,27 +627,23 @@ function PropertyCard({ prop }: { prop: Property }) {
     >
       {/* Image with slideshow */}
       <div className="relative h-48 overflow-hidden">
-        <Image
-          src={prop.images[imgIdx]}
-          alt={prop.title}
-          fill
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-          className="object-cover transition-transform duration-500 group-hover:scale-105"
-        />
+        {currentImg ? (
+          <Image
+            src={currentImg.url}
+            alt={prop.title}
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            className="object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+        ) : (
+          <div className="w-full h-full" style={{ background: 'var(--color-bg)' }} />
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/25 to-transparent" />
 
-        {/* Badge */}
-        {prop.badge && (
-          <span className="absolute top-3 left-3 text-xs font-semibold px-2.5 py-1 rounded-full text-white"
-            style={{ background: badgeBg }}>
-            {prop.badge}
-          </span>
-        )}
-
-        {/* Status */}
-        <span className="absolute top-3 right-3 text-[0.65rem] font-medium rounded-md px-2 py-0.5 backdrop-blur-sm"
-          style={{ background: 'oklch(98% 0.006 155 / 0.85)', color: 'var(--color-text-secondary)' }}>
-          {prop.status}
+        {/* Property type badge */}
+        <span className="absolute top-3 left-3 text-xs font-semibold px-2.5 py-1 rounded-full text-white"
+          style={{ background: 'var(--color-primary)' }}>
+          {typeLabel}
         </span>
 
         {/* Prev / Next arrows */}
@@ -636,7 +668,7 @@ function PropertyCard({ prop }: { prop: Property }) {
 
             {/* Dot indicators */}
             <div className="absolute bottom-10 left-0 right-0 flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              {prop.images.map((_, i) => (
+              {images.map((_, i) => (
                 <button
                   key={i}
                   onClick={(e) => { e.preventDefault(); setImgIdx(i) }}
@@ -659,17 +691,25 @@ function PropertyCard({ prop }: { prop: Property }) {
           {prop.title}
         </h2>
         <p className="text-xs flex items-center gap-1 mb-3" style={{ color: 'var(--color-muted)' }}>
-          <IconPin /> {prop.location}
+          <IconPin /> {locationName}
         </p>
 
         {/* Specs */}
         <div className="flex items-center gap-3 text-xs mb-3" style={{ color: 'var(--color-text-secondary)' }}>
-          <span>{prop.rooms}&thinsp;ch.</span>
-          <span className="w-px h-3" style={{ background: 'var(--color-border)' }} aria-hidden="true" />
-          <span>{prop.bathrooms}&thinsp;sdb.</span>
-          <span className="w-px h-3" style={{ background: 'var(--color-border)' }} aria-hidden="true" />
-          <span>{prop.area}&thinsp;m²</span>
-          {prop.floor > 0 && (
+          {prop.bedrooms != null && (
+            <>
+              <span>{prop.bedrooms}&thinsp;ch.</span>
+              <span className="w-px h-3" style={{ background: 'var(--color-border)' }} aria-hidden="true" />
+            </>
+          )}
+          {prop.bathrooms != null && (
+            <>
+              <span>{prop.bathrooms}&thinsp;sdb.</span>
+              <span className="w-px h-3" style={{ background: 'var(--color-border)' }} aria-hidden="true" />
+            </>
+          )}
+          {prop.surface != null && <span>{prop.surface}&thinsp;m²</span>}
+          {prop.floor != null && prop.floor > 0 && (
             <>
               <span className="w-px h-3" style={{ background: 'var(--color-border)' }} aria-hidden="true" />
               <span>Ét.&thinsp;{prop.floor}</span>
@@ -677,13 +717,13 @@ function PropertyCard({ prop }: { prop: Property }) {
           )}
         </div>
 
-        {/* Features */}
-        {prop.features.length > 0 && (
+        {/* Amenity chips */}
+        {(prop.amenities?.length ?? 0) > 0 && (
           <div className="flex flex-wrap gap-1 mb-3">
-            {prop.features.map((f) => (
-              <span key={f} className="text-[0.65rem] px-2 py-0.5 rounded-full"
+            {prop.amenities!.slice(0, 3).map((a) => (
+              <span key={a.id} className="text-[0.65rem] px-2 py-0.5 rounded-full"
                 style={{ background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }}>
-                {f}
+                {a.name}
               </span>
             ))}
           </div>
@@ -696,9 +736,9 @@ function PropertyCard({ prop }: { prop: Property }) {
               {fmt(prop.price)}{' '}
               <span className="text-sm font-normal" style={{ color: 'var(--color-muted)' }}>{priceLabel}</span>
             </p>
-            {prop.mode === 'vente' && (
+            {prop.transaction_type === 'sale' && prop.surface && (
               <p className="text-[0.7rem]" style={{ color: 'var(--color-muted)' }}>
-                {fmt(Math.round(prop.price / prop.area))}&thinsp;DT/m²
+                {fmt(Math.round(prop.price / prop.surface))}&thinsp;DT/m²
               </p>
             )}
           </div>

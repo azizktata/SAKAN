@@ -1,33 +1,20 @@
 import { type UseFormReturn } from 'react-hook-form'
 import type { WizardSchema } from './publish-dialog'
-
-const AMENITIES = [
-  { slug: 'ascenseur',      label: 'Ascenseur',        icon: '🛗' },
-  { slug: 'garage',         label: 'Garage',           icon: '🚗' },
-  { slug: 'terrasse',       label: 'Terrasse',         icon: '🌇' },
-  { slug: 'jardin',         label: 'Jardin',           icon: '🌳' },
-  { slug: 'meuble',         label: 'Meublé',           icon: '🛋️' },
-  { slug: 'piscine',        label: 'Piscine',          icon: '🏊' },
-  { slug: 'gardien',        label: 'Gardien',          icon: '👮' },
-  { slug: 'proche-mosquee', label: 'Proche mosquée',   icon: '🕌' },
-  { slug: 'ecole',          label: 'École à proximité',icon: '🏫' },
-  { slug: 'transports',     label: 'Transports',       icon: '🚌' },
-  { slug: 'climatisation',  label: 'Climatisation',    icon: '❄️' },
-  { slug: 'securite',       label: 'Sécurité 24h',     icon: '🔒' },
-] as const
+import type { Amenity } from '@/lib/api'
 
 interface Props {
   form: UseFormReturn<WizardSchema>
+  amenities: Amenity[]
 }
 
-export function Step4Amenities({ form }: Props) {
+export function Step4Amenities({ form, amenities }: Props) {
   const { setValue, watch } = form
   const amenityIds = watch('amenityIds') ?? []
 
-  function toggle(slug: string) {
-    const next = amenityIds.includes(slug)
-      ? amenityIds.filter((a) => a !== slug)
-      : [...amenityIds, slug]
+  function toggle(id: string) {
+    const next = amenityIds.includes(id)
+      ? amenityIds.filter((a) => a !== id)
+      : [...amenityIds, id]
     setValue('amenityIds', next)
   }
 
@@ -36,28 +23,32 @@ export function Step4Amenities({ form }: Props) {
       <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
         Sélectionnez les équipements et critères disponibles pour ce bien.
       </p>
+      {amenities.length === 0 ? (
+        <p className="text-sm" style={{ color: 'var(--color-muted)' }}>Chargement des équipements…</p>
+      ) : (
       <div className="grid grid-cols-2 gap-2.5">
-        {AMENITIES.map((a) => {
-          const active = amenityIds.includes(a.slug)
+        {amenities.map((a) => {
+          const id = String(a.id)
+          const active = amenityIds.includes(id)
           return (
             <button
-              key={a.slug}
+              key={id}
               type="button"
-              onClick={() => toggle(a.slug)}
+              onClick={() => toggle(id)}
               className="flex items-center gap-3 px-3.5 py-3 rounded-xl border transition-all text-left"
               style={{
                 borderColor: active ? 'var(--color-primary)' : 'var(--color-border)',
                 background:  active ? 'oklch(42% 0.09 155 / 0.06)' : 'transparent',
               }}
             >
-              <span className="text-xl leading-none">{a.icon}</span>
               <span className="text-xs font-medium leading-tight" style={{ color: active ? 'var(--color-primary)' : 'var(--color-text-secondary)' }}>
-                {a.label}
+                {a.name}
               </span>
             </button>
           )
         })}
       </div>
+      )}
       {amenityIds.length > 0 && (
         <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
           {amenityIds.length} équipement{amenityIds.length > 1 ? 's' : ''} sélectionné{amenityIds.length > 1 ? 's' : ''}

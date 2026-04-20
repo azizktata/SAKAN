@@ -28,7 +28,7 @@ export default function AnnoncesPage() {
 
   useEffect(() => {
     propertiesApi.myList()
-      .then((res) => setProperties(res.data.map(toManaged)))
+      .then((res) => setProperties(res.data.data.map(toManaged)))
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])

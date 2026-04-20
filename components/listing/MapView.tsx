@@ -2,28 +2,30 @@
 
 import { useRef, useEffect } from 'react'
 import type { Map, Marker } from 'leaflet'
-import type { Property } from '@/data/properties'
+import type { Property } from '@/lib/api'
 import 'leaflet/dist/leaflet.css'
 
-type MarkerEntry = { id: number; el: HTMLDivElement; marker: Marker }
+type MarkerEntry = { id: string; el: HTMLDivElement; marker: Marker }
 
 interface Props {
   properties: Property[]
-  hoveredId: number | null
-  onHover: (id: number | null) => void
-  onSelect: (id: number) => void
+  hoveredId: string | null
+  onHover: (id: string | null) => void
+  onSelect: (id: string) => void
 }
 
 function fmt(n: number) { return n.toLocaleString('fr-TN') }
 
 function tooltipHtml(prop: Property) {
-  const priceLabel = prop.mode === 'location' ? ' DT / mois' : ' DT'
+  const priceLabel = prop.transaction_type === 'rent' ? ' DT / mois' : ' DT'
+  const cover = prop.images?.find((i) => i.is_cover) ?? prop.images?.[0]
+  const locationName = prop.location?.name ?? prop.address ?? ''
   return `
     <div class="map-tooltip">
-      <img class="map-tooltip-img" src="${prop.images[0]}" alt="${prop.title}" />
+      ${cover ? `<img class="map-tooltip-img" src="${cover.url}" alt="${prop.title}" />` : ''}
       <div class="map-tooltip-body">
         <p class="map-tooltip-title">${prop.title}</p>
-        <p class="map-tooltip-location">${prop.location}</p>
+        <p class="map-tooltip-location">${locationName}</p>
         <p class="map-tooltip-price">${fmt(prop.price)}${priceLabel}</p>
       </div>
     </div>
@@ -35,7 +37,6 @@ export function MapView({ properties, hoveredId, onHover, onSelect }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const markersRef   = useRef<MarkerEntry[]>([])
 
-  // Init map once
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
     // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -58,7 +59,6 @@ export function MapView({ properties, hoveredId, onHover, onSelect }: Props) {
     }
   }, [])
 
-  // Re-create markers when filtered properties change
   useEffect(() => {
     if (!mapRef.current) return
     // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -68,20 +68,21 @@ export function MapView({ properties, hoveredId, onHover, onSelect }: Props) {
     markersRef.current = []
 
     properties.forEach((prop) => {
+      if (!prop.latitude || !prop.longitude) return
+
       const el = document.createElement('div')
       el.className = 'map-marker'
-      el.textContent = prop.mode === 'location'
+      el.textContent = prop.transaction_type === 'rent'
         ? `${fmt(prop.price)} DT`
-        : `${Math.round(prop.price / 1000)} DT`
+        : `${Math.round(prop.price / 1000)}k DT`
 
       el.addEventListener('mouseenter', () => onHover(prop.id))
       el.addEventListener('mouseleave', () => onHover(null))
       el.addEventListener('click', () => onSelect(prop.id))
 
       const icon = L.divIcon({ html: el, className: '', iconSize: [0, 0], iconAnchor: [0, 0] })
-      const marker = L.marker([prop.lat, prop.lng], { icon }).addTo(mapRef.current!)
+      const marker = L.marker([prop.latitude!, prop.longitude!], { icon }).addTo(mapRef.current!)
 
-      // Hover tooltip with image + info
       marker.bindTooltip(tooltipHtml(prop), {
         direction: 'top',
         offset: L.point(0, -52),
@@ -93,7 +94,6 @@ export function MapView({ properties, hoveredId, onHover, onSelect }: Props) {
     })
   }, [properties, onHover, onSelect])
 
-  // Update highlight when hoveredId changes
   useEffect(() => {
     markersRef.current.forEach(({ id, el }) => {
       el.setAttribute('data-hovered', String(id === hoveredId))

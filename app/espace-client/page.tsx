@@ -25,8 +25,8 @@ export default function EspaceClientPage() {
   useEffect(() => {
     Promise.all([propertiesApi.myList(), propertiesApi.myContacts()])
       .then(([propsRes, contactsRes]) => {
-        setProperties(propsRes.data)
-        setContacts(contactsRes.data)
+        setProperties(propsRes.data.data)
+        setContacts(contactsRes.data.data)
       })
       .catch(() => {})
       .finally(() => setLoading(false))

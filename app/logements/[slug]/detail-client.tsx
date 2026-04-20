@@ -3,7 +3,8 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { useState, useCallback } from 'react'
-import type { Property } from '@/data/properties'
+import type { Property } from '@/lib/api'
+import { propertiesApi } from '@/lib/api'
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 
@@ -78,6 +79,11 @@ function IconMessage() {
 
 function fmt(n: number) { return n.toLocaleString('fr-TN') }
 
+const PROPERTY_TYPE_LABELS: Record<string, string> = {
+  apartment: 'Appartement', villa: 'Villa', house: 'Maison',
+  land: 'Terrain', commercial: 'Commercial', office: 'Bureau',
+}
+
 // ── Carousel ──────────────────────────────────────────────────────────────────
 
 function Carousel({ images, title }: { images: string[]; title: string }) {
@@ -87,11 +93,13 @@ function Carousel({ images, title }: { images: string[]; title: string }) {
   const prev = useCallback(() => setIdx((i) => (i - 1 + images.length) % images.length), [images.length])
   const next = useCallback(() => setIdx((i) => (i + 1) % images.length), [images.length])
 
+  if (images.length === 0) {
+    return <div className="w-full bg-[var(--color-bg)]" style={{ height: 'clamp(260px, 46vw, 580px)' }} />
+  }
+
   return (
     <>
-      {/* Mobile: 260px fixed, Desktop: taller */}
-      <div className="relative overflow-hidden bg-black"
-        style={{ height: 'clamp(260px, 46vw, 580px)' }}>
+      <div className="relative overflow-hidden bg-black" style={{ height: 'clamp(260px, 46vw, 580px)' }}>
         <Image
           src={images[idx]}
           alt={`${title} — photo ${idx + 1}`}
@@ -117,7 +125,6 @@ function Carousel({ images, title }: { images: string[]; title: string }) {
           </>
         )}
 
-        {/* Bottom row: counter + "all photos" */}
         <div className="absolute bottom-3 left-0 right-0 flex items-center justify-between px-4">
           <span className="text-xs font-medium text-white px-2.5 py-1 rounded-full"
             style={{ background: 'rgba(0,0,0,0.45)' }}>
@@ -132,7 +139,6 @@ function Carousel({ images, title }: { images: string[]; title: string }) {
           )}
         </div>
 
-        {/* Dot indicators */}
         {images.length > 1 && (
           <div className="absolute bottom-12 left-0 right-0 flex justify-center gap-1.5">
             {images.map((_, i) => (
@@ -144,7 +150,6 @@ function Carousel({ images, title }: { images: string[]; title: string }) {
         )}
       </div>
 
-      {/* Lightbox */}
       {lightboxOpen && (
         <div className="fixed inset-0 z-50 flex flex-col" style={{ background: 'rgba(0,0,0,0.95)' }}>
           <div className="flex items-center justify-between px-4 py-3 shrink-0">
@@ -170,24 +175,40 @@ function Carousel({ images, title }: { images: string[]; title: string }) {
   )
 }
 
-// ── Contact panel (modal / drawer) ────────────────────────────────────────────
+// ── Contact panel ─────────────────────────────────────────────────────────────
 
 function ContactPanel({ prop, onClose }: { prop: Property; onClose: () => void }) {
-  const [name, setName] = useState('')
+  const [name,    setName]    = useState('')
+  const [phone,   setPhone]   = useState('')
   const [message, setMessage] = useState('')
-  const [sent, setSent] = useState(false)
-  const [copied, setCopied] = useState(false)
-  const priceLabel = prop.mode === 'location' ? '/mois' : 'DT'
+  const [sending, setSending] = useState(false)
+  const [sent,    setSent]    = useState(false)
+  const [error,   setError]   = useState(false)
+  const [copied,  setCopied]  = useState(false)
+  const priceLabel = prop.transaction_type === 'rent' ? '/mois' : 'DT'
 
-  function handleSend(e: React.FormEvent) {
+  async function handleSend(e: React.FormEvent) {
     e.preventDefault()
-    setSent(true)
+    setSending(true)
+    setError(false)
+    try {
+      await propertiesApi.contact(prop.id, {
+        name,
+        phone: phone.trim() || undefined,
+        message,
+      })
+      setSent(true)
+    } catch {
+      setError(true)
+    } finally {
+      setSending(false)
+    }
   }
 
   async function handleShare() {
     const url = typeof window !== 'undefined' ? window.location.href : ''
     if (navigator.share) {
-      await navigator.share({ title: prop.title, text: prop.location, url })
+      await navigator.share({ title: prop.title, url })
     } else {
       await navigator.clipboard.writeText(url)
       setCopied(true)
@@ -196,17 +217,14 @@ function ContactPanel({ prop, onClose }: { prop: Property; onClose: () => void }
   }
 
   return (
-    /* Backdrop */
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
       style={{ background: 'rgba(0,0,0,0.45)' }}
       onClick={onClose}>
-      {/* Panel — bottom sheet on mobile, centered card on sm+ */}
       <div
         className="w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-6 space-y-4"
         style={{ background: 'var(--color-surface)' }}
         onClick={(e) => e.stopPropagation()}>
 
-        {/* Header */}
         <div className="flex items-start justify-between">
           <div>
             <p className="font-display font-bold tabular-nums" style={{ fontSize: '1.375rem', color: 'var(--color-text)' }}>
@@ -222,45 +240,38 @@ function ContactPanel({ prop, onClose }: { prop: Property; onClose: () => void }
           </button>
         </div>
 
-        {/* Call + WhatsApp */}
-        <div className="grid grid-cols-2 gap-2.5">
-          <a href="tel:+21600000000"
-            className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-white"
-            style={{ background: 'var(--color-primary)' }}>
-            <IconPhone /> Appeler
-          </a>
-          <a href="https://wa.me/21600000000" target="_blank" rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold"
-            style={{ background: '#25D366', color: '#fff' }}>
-            <IconWhatsApp /> WhatsApp
-          </a>
-        </div>
-
-        {/* Quick message */}
         {sent ? (
-          <div className="py-3 text-center rounded-xl" style={{ background: 'oklch(42% 0.09 155 / 0.07)' }}>
+          <div className="py-4 text-center rounded-xl" style={{ background: 'oklch(42% 0.09 155 / 0.07)' }}>
             <p className="text-sm font-medium" style={{ color: 'var(--color-primary)' }}>Message envoyé ✓</p>
             <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted)' }}>Le propriétaire vous contactera bientôt.</p>
           </div>
         ) : (
           <form onSubmit={handleSend} className="space-y-2">
-            <input type="text" placeholder="Votre nom" value={name}
+            <input type="text" placeholder="Votre nom *" value={name}
               onChange={(e) => setName(e.target.value)} required
               className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-2"
               style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }} />
-            <textarea placeholder="Votre message…" value={message}
+            <input type="tel" placeholder="Téléphone (facultatif)" value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-2"
+              style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }} />
+            <textarea placeholder="Votre message… *" value={message}
               onChange={(e) => setMessage(e.target.value)} required rows={3}
               className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 resize-none"
               style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }} />
-            <button type="submit"
-              className="w-full py-2.5 rounded-xl text-sm font-semibold text-white"
+            {error && (
+              <p className="text-xs text-center" style={{ color: 'oklch(55% 0.18 25)' }}>
+                Une erreur s&apos;est produite. Veuillez réessayer.
+              </p>
+            )}
+            <button type="submit" disabled={sending}
+              className="w-full py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-60"
               style={{ background: 'var(--color-primary-dark)' }}>
-              Envoyer le message
+              {sending ? 'Envoi…' : 'Envoyer le message'}
             </button>
           </form>
         )}
 
-        {/* Share */}
         <button onClick={handleShare}
           className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-medium border"
           style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
@@ -275,14 +286,21 @@ function ContactPanel({ prop, onClose }: { prop: Property; onClose: () => void }
 // ── Similar card ──────────────────────────────────────────────────────────────
 
 function SimilarCard({ prop }: { prop: Property }) {
-  const priceLabel = prop.mode === 'location' ? '/mois' : 'DT'
+  const priceLabel = prop.transaction_type === 'rent' ? '/mois' : 'DT'
+  const cover      = prop.images?.find((i) => i.is_cover) ?? prop.images?.[0]
+  const location   = prop.location?.name ?? prop.address ?? ''
+
   return (
     <Link href={`/logements/${prop.id}`}
       className="group flex-shrink-0 rounded-2xl overflow-hidden"
       style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', width: '240px' }}>
       <div className="relative h-36 overflow-hidden">
-        <Image src={prop.images[0]} alt={prop.title} fill sizes="240px"
-          className="object-cover transition-transform duration-500 group-hover:scale-105" />
+        {cover ? (
+          <Image src={cover.url} alt={prop.title} fill sizes="240px"
+            className="object-cover transition-transform duration-500 group-hover:scale-105" />
+        ) : (
+          <div className="w-full h-full" style={{ background: 'var(--color-bg)' }} />
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/25 to-transparent" />
       </div>
       <div className="p-3">
@@ -290,7 +308,7 @@ function SimilarCard({ prop }: { prop: Property }) {
           {prop.title}
         </p>
         <p className="text-xs flex items-center gap-1 mb-2" style={{ color: 'var(--color-muted)' }}>
-          <IconPin />{prop.location}
+          <IconPin />{location}
         </p>
         <div className="flex items-center justify-between">
           <p className="font-display font-bold text-sm tabular-nums" style={{ color: 'var(--color-text)' }}>
@@ -298,7 +316,7 @@ function SimilarCard({ prop }: { prop: Property }) {
             <span className="font-normal text-xs" style={{ color: 'var(--color-muted)' }}>{priceLabel}</span>
           </p>
           <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-            {prop.area} m² · {prop.rooms} ch.
+            {prop.surface ? `${prop.surface} m²` : ''}{prop.bedrooms ? ` · ${prop.bedrooms} ch.` : ''}
           </span>
         </div>
       </div>
@@ -310,106 +328,118 @@ function SimilarCard({ prop }: { prop: Property }) {
 
 export function PropertyDetailClient({ prop, similar }: { prop: Property; similar: Property[] }) {
   const [contactOpen, setContactOpen] = useState(false)
-  const badgeBg = prop.badge === 'Exclusif' ? 'var(--color-accent)' : 'var(--color-primary)'
+
+  const images      = prop.images?.map((i) => i.url) ?? []
+  const location    = prop.location?.name ?? prop.address ?? ''
+  const typeLabel   = PROPERTY_TYPE_LABELS[prop.property_type] ?? prop.property_type
+  const priceLabel  = prop.transaction_type === 'rent' ? 'DT / mois' : 'DT'
 
   return (
     <>
       <main className="pt-16 pb-28 lg:pb-10" style={{ background: 'var(--color-bg)' }}>
 
-       
-
-        {/* ── Carousel — full-width, wider on desktop ─────────────────── */}
         <div className="max-w-screen-xl mx-auto lg:px-8">
           <div className="lg:rounded-b-2xl overflow-hidden">
-            <Carousel images={prop.images} title={prop.title} />
+            <Carousel images={images} title={prop.title} />
           </div>
         </div>
 
-        {/* ── Content ──────────────────────────────────────────────────── */}
         <div className="max-w-screen-xl mx-auto px-4 lg:px-8 mt-5">
           <div className="lg:grid lg:grid-cols-12 lg:gap-10 lg:items-start">
 
-            {/* Left / main */}
+            {/* Left */}
             <div className="lg:col-span-8 space-y-5">
 
-              {/* ── Key info — everything visible immediately ─────────── */}
               <div>
-                 {/* Back link */}
- 
-                {/* Badges */}
-                {/* <div className="flex flex-wrap items-center gap-2 mb-3">
+                <Link href="/logements"
+                  className="inline-flex items-center gap-1.5 text-sm font-medium mb-3"
+                  style={{ color: 'var(--color-text-secondary)' }}>
+                  <IconArrowLeft /> Retour aux annonces
+                </Link>
+
+                {/* Type + mode badges */}
+                <div className="flex flex-wrap items-center gap-2 mb-3">
                   <span className="text-xs font-semibold px-2.5 py-1 rounded-full text-white"
-                    style={{ background: prop.mode === 'vente' ? 'var(--color-primary)' : 'var(--color-accent)' }}>
-                    {prop.mode === 'vente' ? 'Vente' : 'Location'}
+                    style={{ background: 'var(--color-primary)' }}>
+                    {typeLabel}
                   </span>
                   <span className="text-xs font-medium px-2.5 py-1 rounded-full border"
                     style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
-                    {prop.status}
+                    {prop.transaction_type === 'sale' ? 'Vente' : 'Location'}
                   </span>
-                  {prop.badge && (
-                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full text-white"
-                      style={{ background: badgeBg }}>
-                      {prop.badge}
+                  {prop.is_furnished && (
+                    <span className="text-xs font-medium px-2.5 py-1 rounded-full"
+                      style={{ background: 'oklch(68% 0.1 78 / 0.12)', color: 'var(--color-accent)' }}>
+                      Meublé
                     </span>
                   )}
-                </div> */}
+                </div>
 
-              
-                {/* Title */}
                 <h1 className="font-display font-semibold leading-snug mb-2"
                   style={{ fontSize: 'clamp(1.125rem, 3vw, 1.5rem)', color: 'var(--color-text)' }}>
                   {prop.title}
                 </h1>
 
-                {/* Price */}
-             
-                {/* Location + specs — same visual rhythm */}
                 <p className="flex items-center gap-1.5 text-sm mb-1" style={{ color: 'var(--color-muted)' }}>
-                  <IconPin /> {prop.location}
+                  <IconPin /> {location}
                 </p>
+
                 <p className="flex flex-wrap items-center gap-x-2 text-sm mb-4" style={{ color: 'var(--color-muted)' }}>
-                  
-                  <span>{prop.rooms} {prop.rooms > 1 ? 'chambres' : 'chambre'}</span>
-                  <span aria-hidden="true">·</span>
-                  <span>{prop.bathrooms} sdb.</span>
-                  <span aria-hidden="true">·</span>
-                  <span>{prop.area} m²</span>
-                  {prop.floor > 0 && (
+                  {prop.bedrooms != null && (
+                    <><span>{prop.bedrooms} {prop.bedrooms > 1 ? 'chambres' : 'chambre'}</span><span aria-hidden="true">·</span></>
+                  )}
+                  {prop.bathrooms != null && (
+                    <><span>{prop.bathrooms} sdb.</span><span aria-hidden="true">·</span></>
+                  )}
+                  {prop.surface != null && <span>{prop.surface} m²</span>}
+                  {prop.floor != null && prop.floor > 0 && (
                     <><span aria-hidden="true">·</span><span>Étage {prop.floor}</span></>
                   )}
                 </p>
-   <p className="font-display font-bold tabular-nums leading-none mb-3"
+
+                <p className="font-display font-bold tabular-nums leading-none mb-3"
                   style={{ fontSize: 'clamp(1.25rem, 4vw, 1.5rem)', color: 'var(--color-text)' }}>
                   {fmt(prop.price)}{' '}
-                  <span className="text-base font-normal" style={{ color: 'var(--color-muted)' }}>
-                    {prop.mode === 'location' ? 'DT / mois' : 'DT'}
-                  </span>
+                  <span className="text-base font-normal" style={{ color: 'var(--color-muted)' }}>{priceLabel}</span>
                 </p>
 
+                {prop.transaction_type === 'sale' && prop.surface && (
+                  <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
+                    {fmt(Math.round(prop.price / prop.surface))} DT / m²
+                  </p>
+                )}
               </div>
 
-              {/* Features */}
-              {prop.features.length > 0 && (
+              {/* Description */}
+              {prop.description && (
+                <div className="pt-4 border-t" style={{ borderColor: 'var(--color-border)' }}>
+                  <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--color-muted)' }}>
+                    Description
+                  </p>
+                  <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: 'var(--color-text)' }}>
+                    {prop.description}
+                  </p>
+                </div>
+              )}
+
+              {/* Amenities */}
+              {(prop.amenities?.length ?? 0) > 0 && (
                 <div className="pt-4 border-t" style={{ borderColor: 'var(--color-border)' }}>
                   <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--color-muted)' }}>
                     Équipements & critères
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    {prop.features.map((f) => (
-                      <span key={f} className="text-sm px-3.5 py-1.5 rounded-full border font-medium"
+                    {prop.amenities!.map((a) => (
+                      <span key={a.id} className="text-sm px-3.5 py-1.5 rounded-full border font-medium"
                         style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)', background: 'var(--color-surface)' }}>
-                        {f}
+                        {a.name}
                       </span>
                     ))}
                   </div>
                 </div>
               )}
-         <Link href="/logements"
-            className="inline-flex items-center gap-1.5 text-sm font-medium"
-            style={{ color: 'var(--color-text-secondary)' }}>
-            <IconArrowLeft /> 
-          </Link>
-              {/* Similar listings */}
+
+              {/* Similar */}
               {similar.length > 0 && (
                 <section className="pt-4 border-t" style={{ borderColor: 'var(--color-border)' }}>
                   <h2 className="font-display font-semibold mb-4"
@@ -423,7 +453,7 @@ export function PropertyDetailClient({ prop, similar }: { prop: Property; simila
               )}
             </div>
 
-            {/* Right — desktop sticky contact button + inline panel */}
+            {/* Right — desktop sticky */}
             <div className="hidden lg:block lg:col-span-4">
               <div className="sticky top-24 space-y-3">
                 <button
@@ -433,16 +463,18 @@ export function PropertyDetailClient({ prop, similar }: { prop: Property; simila
                   <IconMessage /> Contacter le propriétaire
                 </button>
                 <div className="grid grid-cols-2 gap-2.5">
-                  <a href="tel:+21600000000"
-                    className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold border transition-colors hover:bg-[oklch(42%_0.09_155_/_0.05)]"
+                  <button
+                    onClick={() => setContactOpen(true)}
+                    className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold border transition-colors"
                     style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)' }}>
                     <IconPhone /> Appeler
-                  </a>
-                  <a href="https://wa.me/21600000000" target="_blank" rel="noopener noreferrer"
+                  </button>
+                  <button
+                    onClick={() => setContactOpen(true)}
                     className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold"
                     style={{ background: '#25D366', color: '#fff' }}>
                     <IconWhatsApp /> WhatsApp
-                  </a>
+                  </button>
                 </div>
               </div>
             </div>
@@ -451,7 +483,7 @@ export function PropertyDetailClient({ prop, similar }: { prop: Property; simila
         </div>
       </main>
 
-      {/* ── Sticky bottom bar — mobile only ──────────────────────────────── */}
+      {/* Mobile sticky CTA */}
       <div className="fixed bottom-0 inset-x-0 z-40 lg:hidden px-4 pb-4 pt-3"
         style={{ background: 'linear-gradient(to top, var(--color-bg) 70%, transparent)' }}>
         <button
@@ -462,7 +494,6 @@ export function PropertyDetailClient({ prop, similar }: { prop: Property; simila
         </button>
       </div>
 
-      {/* ── Contact modal ─────────────────────────────────────────────────── */}
       {contactOpen && <ContactPanel prop={prop} onClose={() => setContactOpen(false)} />}
     </>
   )

@@ -33,6 +33,8 @@ export type Property = {
   bathrooms?: number
   floor?: number
   is_furnished: boolean
+  latitude?: number
+  longitude?: number
   user_id: string
   created_at: string
   updated_at: string
@@ -55,8 +57,10 @@ export type PropertyFilters = {
   transaction_type?: TransactionType
   property_type?: string
   location_id?: string
-  price_min?: number
-  price_max?: number
+  min_price?: number
+  max_price?: number
+  bedrooms?: number
+  amenities?: string   // comma-separated amenity IDs
   page?: number
   per_page?: number
 }
@@ -75,8 +79,23 @@ export type PropertyPayload = {
   bathrooms?: number
   floor?: number
   is_furnished?: boolean
+  latitude?: number
+  longitude?: number
   amenity_ids?: string[]
   images?: Array<{ url: string; position: number; is_cover: boolean }>
+}
+
+export type Location = { id: number | string; name: string; slug: string }
+export type Amenity  = { id: number | string; name: string; slug: string }
+
+export type Paginated<T> = {
+  data: T[]
+  current_page: number
+  last_page: number
+  per_page: number
+  total: number
+  next_page_url: string | null
+  prev_page_url: string | null
 }
 
 export type AdminFilters = {
@@ -104,7 +123,14 @@ const api = axios.create({
 api.interceptors.response.use(
   (res) => res,
   (error) => {
-    if (typeof window !== 'undefined' && error.response?.status === 401) {
+    const url: string = error.config?.url ?? ''
+    const isAuthCheck = url.includes('/auth/me') || url.includes('/auth/login') || url.includes('/auth/register') || /\/properties\/[^/]+\/contacts$/.test(url)
+    if (
+      typeof window !== 'undefined' &&
+      error.response?.status === 401 &&
+      !isAuthCheck &&
+      !window.location.pathname.startsWith('/auth')
+    ) {
       window.location.href = '/auth'
     }
     return Promise.reject(error)
@@ -128,13 +154,15 @@ export const authApi = {
 // ── Properties ─────────────────────────────────────────────────────────────────
 
 export const propertiesApi = {
-  list:       (params?: PropertyFilters)                           => api.get<Property[]>('/properties', { params }),
+  list:       (params?: PropertyFilters)                           => api.get<Paginated<Property>>('/properties', { params }),
   get:        (id: string)                                         => api.get<Property>(`/properties/${id}`),
   create:     (data: PropertyPayload)                              => api.post<Property>('/properties', data),
   update:     (id: string, data: Partial<PropertyPayload>)        => api.patch<Property>(`/properties/${id}`, data),
   delete:     (id: string)                                         => api.delete(`/properties/${id}`),
-  myList:     ()                                                   => api.get<Property[]>('/user/properties'),
-  myContacts: ()                                                   => api.get<Contact[]>('/user/contacts'),
+  myList:     ()                                                   => api.get<Paginated<Property>>('/user/properties'),
+  myContacts: ()                                                   => api.get<Paginated<Contact>>('/user/contacts'),
+  contact:    (id: string, data: { name: string; phone?: string; message: string }) =>
+                                                                      api.post(`/properties/${id}/contacts`, data),
 }
 
 // ── User ───────────────────────────────────────────────────────────────────────
@@ -143,13 +171,23 @@ export const userApi = {
   update: (data: { name?: string; phone?: string }) => api.patch<User>('/user/me', data),
 }
 
+// ── Reference data ────────────────────────────────────────────────────────────
+
+export const referenceApi = {
+  locations: () => api.get<Location[]>('/locations'),
+  amenities: () => api.get<Amenity[]>('/amenities'),
+}
+
 // ── Upload ─────────────────────────────────────────────────────────────────────
 
 export const uploadApi = {
-  presign: (filename: string, contentType: string) =>
-    api.get<{ signedUrl: string; publicUrl: string }>('/upload/presign', {
-      params: { filename, contentType },
-    }),
+  image: (file: File) => {
+    const form = new FormData()
+    form.append('image', file)
+    return api.post<{ url: string }>('/upload/image', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
 }
 
 // ── Admin ──────────────────────────────────────────────────────────────────────

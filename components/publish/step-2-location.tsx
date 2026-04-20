@@ -1,9 +1,10 @@
-import { type UseFormReturn } from 'react-hook-form'
+import { type UseFormReturn, Controller } from 'react-hook-form'
 import type { WizardSchema } from './publish-dialog'
-import { CITIES } from '@/data/cities'
+import type { Location } from '@/lib/api'
 
 interface Props {
   form: UseFormReturn<WizardSchema>
+  locations: Location[]
 }
 
 function ChevronDown() {
@@ -15,8 +16,8 @@ function ChevronDown() {
   )
 }
 
-export function Step2Location({ form }: Props) {
-  const { register, formState: { errors } } = form
+export function Step2Location({ form, locations }: Props) {
+  const { register, control, formState: { errors } } = form
 
   return (
     <div className="space-y-5">
@@ -33,9 +34,9 @@ export function Step2Location({ form }: Props) {
             style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text)' }}
           >
             <option value="">— Choisissez une ville —</option>
-            {CITIES.map((city) => (
-              <option key={city.slug} value={city.slug}>
-                {city.name} ({city.count} biens)
+            {locations.map((loc) => (
+              <option key={loc.id} value={String(loc.id)}>
+                {loc.name}
               </option>
             ))}
           </select>
@@ -78,6 +79,66 @@ export function Step2Location({ form }: Props) {
         {errors.address && (
           <p className="text-xs mt-1.5" style={{ color: 'oklch(55% 0.18 25)' }}>{errors.address.message}</p>
         )}
+      </div>
+
+      {/* Coordinates */}
+      <div>
+        <label className="text-xs font-semibold uppercase tracking-wider block mb-2" style={{ color: 'var(--color-muted)' }}>
+          Coordonnées GPS <span style={{ fontWeight: 400 }}>(facultatif)</span>
+        </label>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Controller
+              name="latitude"
+              control={control}
+              render={({ field }) => (
+                <input
+                  type="number"
+                  step="any"
+                  placeholder="Latitude  ex: 36.8065"
+                  value={field.value ?? ''}
+                  onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+                  className="w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-2"
+                  style={{
+                    borderColor: errors.latitude ? 'oklch(55% 0.18 25)' : 'var(--color-border)',
+                    background: 'var(--color-bg)',
+                    color: 'var(--color-text)',
+                  }}
+                />
+              )}
+            />
+            {errors.latitude && (
+              <p className="text-xs mt-1" style={{ color: 'oklch(55% 0.18 25)' }}>{errors.latitude.message}</p>
+            )}
+          </div>
+          <div>
+            <Controller
+              name="longitude"
+              control={control}
+              render={({ field }) => (
+                <input
+                  type="number"
+                  step="any"
+                  placeholder="Longitude  ex: 10.1815"
+                  value={field.value ?? ''}
+                  onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+                  className="w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-2"
+                  style={{
+                    borderColor: errors.longitude ? 'oklch(55% 0.18 25)' : 'var(--color-border)',
+                    background: 'var(--color-bg)',
+                    color: 'var(--color-text)',
+                  }}
+                />
+              )}
+            />
+            {errors.longitude && (
+              <p className="text-xs mt-1" style={{ color: 'oklch(55% 0.18 25)' }}>{errors.longitude.message}</p>
+            )}
+          </div>
+        </div>
+        <p className="text-xs mt-2" style={{ color: 'var(--color-muted)' }}>
+          Trouvez les coordonnées sur <a href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary)' }}>Google Maps</a> en faisant un clic droit sur l'emplacement.
+        </p>
       </div>
 
       {/* Info */}

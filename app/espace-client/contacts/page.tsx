@@ -13,7 +13,7 @@ export default function ContactsPage() {
 
   useEffect(() => {
     propertiesApi.myContacts()
-      .then((res) => setContacts(res.data))
+      .then((res) => setContacts(res.data.data))
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])

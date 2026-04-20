@@ -62,7 +62,7 @@ export function PropertyCardManage({ property, onDelete, onToggleStatus }: Props
 
       {/* Actions */}
       <div className="px-4 pb-4 flex items-center gap-2">
-        <Link href={`/espace-client/annonces/${property.id}/modifier`}
+        <Link href={`?publish=open&edit=${property.id}`}
           className="flex-1 py-2 rounded-xl border text-xs font-semibold text-center transition-colors"
           style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
           Modifier

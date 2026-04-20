@@ -1,13 +1,13 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Dialog } from '@/components/ui/dialog'
 import { useAuth } from '@/lib/auth-context'
-import { propertiesApi } from '@/lib/api'
+import { propertiesApi, uploadApi, referenceApi, type Location, type Amenity, type Property } from '@/lib/api'
 import { Step0Auth } from './step-0-auth'
 import { Step1Type } from './step-1-type'
 import { Step2Location } from './step-2-location'
@@ -24,6 +24,8 @@ export const wizardSchema = z.object({
   locationId:      z.string().optional(),
   neighbourhood:   z.string().optional(),
   address:         z.string().min(1, 'Adresse requise'),
+  latitude:        z.number().min(-90).max(90).optional(),
+  longitude:       z.number().min(-180).max(180).optional(),
   title:           z.string().min(5, 'Titre trop court (5 caractères min.)').max(120),
   price:           z.number().int().positive(),
   surface:         z.number().int().positive().optional(),
@@ -69,10 +71,53 @@ export function PublishDialog() {
   const pathname     = usePathname()
   const { user, loading: authLoading } = useAuth()
 
-  const open = searchParams.get('publish') === 'open'
+  const open   = searchParams.get('publish') === 'open'
+  const editId = searchParams.get('edit') ?? undefined
 
-  const [step, setStep]           = useState(1)
+  const [step, setStep]             = useState(1)
   const [submitting, setSubmitting] = useState(false)
+  const [loadingEdit, setLoadingEdit] = useState(false)
+  const [locations, setLocations]   = useState<Location[]>([])
+  const [amenities, setAmenities]   = useState<Amenity[]>([])
+
+  useEffect(() => {
+    if (!open) return
+    referenceApi.locations().then((r) => setLocations(r.data)).catch(() => {})
+    referenceApi.amenities().then((r) => setAmenities(r.data)).catch(() => {})
+  }, [open])
+
+  useEffect(() => {
+    if (!open || !editId) return
+    setLoadingEdit(true)
+    propertiesApi.get(editId)
+      .then((res) => {
+        const p: Property = res.data
+        form.reset({
+          transactionType: p.transaction_type,
+          propertyType:    p.property_type as WizardSchema['propertyType'],
+          locationId:      p.location_id ? String(p.location_id) : undefined,
+          address:         p.address ?? '',
+          latitude:        p.latitude,
+          longitude:       p.longitude,
+          title:           p.title,
+          price:           p.price,
+          surface:         p.surface,
+          bedrooms:        p.bedrooms,
+          bathrooms:       p.bathrooms,
+          floor:           p.floor,
+          isFurnished:     p.is_furnished,
+          description:     p.description,
+          amenityIds:      p.amenities?.map((a) => String(a.id)) ?? [],
+          images:          p.images?.map((img) => ({
+            url:      img.url,
+            position: img.position,
+            isCover:  img.is_cover,
+          })) ?? [],
+        })
+      })
+      .catch(() => {})
+      .finally(() => setLoadingEdit(false))
+  }, [open, editId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const form = useForm<WizardSchema>({
     resolver: zodResolver(wizardSchema),
@@ -90,6 +135,7 @@ export function PublishDialog() {
   const close = useCallback(() => {
     const params = new URLSearchParams(searchParams.toString())
     params.delete('publish')
+    params.delete('edit')
     const qs = params.toString()
     router.push(`${pathname}${qs ? `?${qs}` : ''}`, { scroll: false })
     setTimeout(() => {
@@ -111,7 +157,24 @@ export function PublishDialog() {
     if (step > 1) setStep((s) => s - 1)
   }
 
-  function buildPayload(status: 'draft' | 'published') {
+  type RawImage = { url: string; position: number; isCover: boolean; localFile?: File }
+
+  async function uploadImages(raw: RawImage[] | undefined) {
+    if (!raw?.length) return []
+    return Promise.all(
+      raw.map(async (img) => {
+        const url = img.localFile
+          ? (await uploadApi.image(img.localFile)).data.url
+          : img.url
+        return { url, position: img.position, is_cover: img.isCover }
+      })
+    )
+  }
+
+  function buildPayload(
+    status: 'draft' | 'published',
+    uploadedImages: Array<{ url: string; position: number; is_cover: boolean }>,
+  ) {
     const d = form.getValues()
     return {
       title:            d.title,
@@ -122,26 +185,31 @@ export function PublishDialog() {
       status,
       location_id:      d.locationId,
       address:          d.address,
+      latitude:         d.latitude,
+      longitude:        d.longitude,
       surface:          d.surface,
       bedrooms:         d.bedrooms,
       bathrooms:        d.bathrooms,
       floor:            d.floor,
       is_furnished:     d.isFurnished ?? false,
       amenity_ids:      d.amenityIds ?? [],
-      images:           d.images?.map((img) => ({
-        url:      img.url,
-        position: img.position,
-        is_cover: img.isCover,
-      })) ?? [],
+      images:           uploadedImages,
     }
   }
 
   async function handleSaveDraft() {
+    const rawImages = form.getValues('images') as RawImage[] | undefined
     setSubmitting(true)
     try {
-      await propertiesApi.create(buildPayload('draft'))
+      const images = await uploadImages(rawImages)
+      const payload = buildPayload('draft', images)
+      if (editId) {
+        await propertiesApi.update(editId, payload)
+      } else {
+        await propertiesApi.create(payload)
+      }
       close()
-      router.push('/espace-client')
+      router.push('/espace-client/annonces')
     } catch {
       // TODO: show toast error
     } finally {
@@ -150,13 +218,21 @@ export function PublishDialog() {
   }
 
   async function handlePublish() {
+    // Capture raw images (with localFile) before form.trigger() strips unknown keys via Zod
+    const rawImages = form.getValues('images') as RawImage[] | undefined
     const valid = await form.trigger()
     if (!valid) return
     setSubmitting(true)
     try {
-      await propertiesApi.create(buildPayload('published'))
+      const images = await uploadImages(rawImages)
+      const payload = buildPayload('published', images)
+      if (editId) {
+        await propertiesApi.update(editId, payload)
+      } else {
+        await propertiesApi.create(payload)
+      }
       close()
-      router.push('/espace-client')
+      router.push('/espace-client/annonces')
     } catch {
       // TODO: show toast error
     } finally {
@@ -164,8 +240,9 @@ export function PublishDialog() {
     }
   }
 
-  const meta = STEPS[step - 1]
-  const showAuthGate = !authLoading && !user
+  const meta          = STEPS[step - 1]
+  const showAuthGate  = !authLoading && !user
+  const dialogTitle   = editId ? 'Modifier le bien' : 'Publier un bien'
 
   return (
     <Dialog open={open} onClose={close} maxWidth="max-w-lg">
@@ -213,7 +290,7 @@ export function PublishDialog() {
         {showAuthGate && (
           <div className="flex items-center justify-between">
             <h2 className="font-display font-semibold text-lg" style={{ color: 'var(--color-text)' }}>
-              Publier un bien
+              {dialogTitle}
             </h2>
             <button
               onClick={close}
@@ -231,7 +308,7 @@ export function PublishDialog() {
 
       {/* Step content */}
       <div className="px-6 pb-2">
-        {authLoading ? (
+        {authLoading || loadingEdit ? (
           <div className="flex justify-center py-12">
             <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
               style={{ borderColor: 'var(--color-primary)', borderTopColor: 'transparent' }} />
@@ -241,9 +318,9 @@ export function PublishDialog() {
         ) : (
           <>
             {step === 1 && <Step1Type form={form} />}
-            {step === 2 && <Step2Location form={form} />}
+            {step === 2 && <Step2Location form={form} locations={locations} />}
             {step === 3 && <Step3Details form={form} />}
-            {step === 4 && <Step4Amenities form={form} />}
+            {step === 4 && <Step4Amenities form={form} amenities={amenities} />}
             {step === 5 && <Step5Images form={form} />}
             {step === 6 && (
               <Step6Review
@@ -257,8 +334,8 @@ export function PublishDialog() {
         )}
       </div>
 
-      {/* Footer nav — only when logged in and not on last step */}
-      {!showAuthGate && !authLoading && step < 6 && (
+      {/* Footer nav — only when logged in, not loading, and not on last step */}
+      {!showAuthGate && !authLoading && !loadingEdit && step < 6 && (
         <div className="sticky bottom-0 px-6 pb-6 pt-4 flex items-center justify-between gap-3"
           style={{ background: 'var(--color-surface)' }}>
           {step > 1 ? (
