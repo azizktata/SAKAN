@@ -621,6 +621,7 @@ function PropertyCard({ prop }: { prop: Property }) {
   }
 
   return (
+    <Link href={`/logements/${prop.id}`}>
     <article
       className="group rounded-2xl overflow-hidden shadow-[0_2px_12px_rgb(0_0_0/0.06)] hover:shadow-[0_10px_36px_rgb(0_0_0/0.12)] transition-shadow duration-300 cursor-pointer"
       style={{ background: 'var(--color-surface)' }}
@@ -742,13 +743,9 @@ function PropertyCard({ prop }: { prop: Property }) {
               </p>
             )}
           </div>
-          <Link href={`/logements/${prop.id}`}
-            className="text-xs font-semibold px-3.5 py-2 rounded-xl transition-colors text-white"
-            style={{ background: 'var(--color-primary)' }}>
-            Voir le bien
-          </Link>
         </div>
       </div>
     </article>
+    </Link>
   )
 }
