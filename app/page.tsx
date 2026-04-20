@@ -340,7 +340,7 @@ export default async function HomePage() {
             </div>
           </div>
         </section> */}
-
+ 
         {/* ── Owner CTA — split with photo ─────────────────────────────────── */}
         <section className="overflow-hidden" style={{ background: 'var(--color-primary-dark)' }}>
           <div className="max-w-7xl mx-auto grid md:grid-cols-2" style={{ minHeight: '420px' }}>
