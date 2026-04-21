@@ -57,10 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const status = (err as { response?: { status?: number } })?.response
         ?.status;
       if (status === 401) {
-        // Definite session expiry — clear everything
         setUser(null);
-        document.cookie =
-          "sakan_session=; path=/; max-age=0; SameSite=None; Secure";
       }
       // Network/CORS errors: keep the localStorage user intact
     } finally {
@@ -79,8 +76,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       /* swallow */
     }
     setUser(null);
-    document.cookie =
-      "sakan_session=; path=/; max-age=0; SameSite=None; Secure";
     window.location.href = "/";
   };
 

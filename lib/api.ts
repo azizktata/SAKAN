@@ -115,7 +115,7 @@ export type RegisterPayload = {
 // ── Axios instance ─────────────────────────────────────────────────────────────
 
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL,
+  baseURL: '/api',
   withCredentials: true,
   headers: { 'Content-Type': 'application/json' },
 })
@@ -147,7 +147,7 @@ export const authApi = {
   logout:         ()                      => api.post('/auth/logout'),
   me:             ()                      => api.get<User>('/auth/me'),
   googleRedirect: () => {
-    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/google/redirect`
+    window.location.href = '/api/auth/google/redirect'
   },
 }
 

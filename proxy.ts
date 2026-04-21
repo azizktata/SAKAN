@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 export function proxy(req: NextRequest) {
-  const hasToken = req.cookies.has('sakan_session')
+  const hasToken = req.cookies.has('sakan_token')
 
   if (!hasToken) {
     const loginUrl = req.nextUrl.clone()
