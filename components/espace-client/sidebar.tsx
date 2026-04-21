@@ -44,6 +44,37 @@ function IconUser() {
   )
 }
 
+export function MobileBottomNav() {
+  const pathname = usePathname()
+
+  function isActive(href: string) {
+    if (href === '/espace-client') return pathname === '/espace-client'
+    return pathname.startsWith(href)
+  }
+
+  return (
+    <nav
+      className="fixed bottom-0 inset-x-0 flex lg:hidden border-t z-40"
+      style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', height: '60px' }}
+    >
+      {NAV.map(({ label, href, icon: Icon }) => {
+        const active = isActive(href)
+        return (
+          <Link
+            key={href}
+            href={href}
+            className="flex-1 flex flex-col items-center justify-center gap-1"
+            style={{ color: active ? 'var(--color-primary)' : 'var(--color-muted)' }}
+          >
+            <Icon />
+            <span className="text-[10px] font-medium leading-none">{label.split(' ').pop()}</span>
+          </Link>
+        )
+      })}
+    </nav>
+  )
+}
+
 export function EspaceClientSidebar() {
   const pathname = usePathname()
   const { user, logout } = useAuth()

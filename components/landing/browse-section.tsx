@@ -136,12 +136,12 @@ export function BrowseSection() {
               }}
             >
               {t.name}
-              <span
+              {/* <span
                 className="text-[0.65rem] px-1.5 py-0.5 rounded-full"
                 style={{ background: 'var(--color-bg)', color: 'var(--color-muted)' }}
               >
                 {t.count}
-              </span>
+              </span> */}
             </Link>
           ))}
         </div>

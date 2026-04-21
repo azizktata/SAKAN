@@ -239,7 +239,9 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* ── Featured listings ────────────────────────────────────────────── */}
+        {
+          featured.length > 0 && (
+        
         <section className="py-20 md:py-28" style={{ background: 'var(--color-bg)' }}>
           <div className="max-w-7xl mx-auto px-6">
             <div className="flex items-end justify-between mb-10">
@@ -305,6 +307,7 @@ export default async function HomePage() {
             </div>
           </div>
         </section>
+        )}
 
         {/* ── Inspiration grid — editorial ─────────────────────────────────── */}
         {/* <section className="py-20 md:py-28" style={{ background: 'var(--color-surface)' }}>
@@ -436,8 +439,14 @@ export default async function HomePage() {
               ))}
             </FooterCol>
             <FooterCol title="Informations" color="var(--color-primary-light)">
-              {['Publier un bien', 'Mon espace', 'CGU', 'Confidentialité', 'Contact'].map((t) => (
-                <li key={t}><Link href="#" className="hover:text-white transition-colors">{t}</Link></li>
+              {[
+                { label: 'Publier un bien', href: '?publish=open'         },
+                { label: 'Mon espace',      href: '/espace-client'        },
+                { label: 'CGU',             href: '/cgu'                  },
+                { label: 'Confidentialité', href: '/confidentialite'      },
+                { label: 'Contact',         href: 'mailto:contact@sakan.tn' },
+              ].map(({ label, href }) => (
+                <li key={label}><Link href={href} className="hover:text-white transition-colors">{label}</Link></li>
               ))}
             </FooterCol>
           </div>

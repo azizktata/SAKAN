@@ -37,10 +37,10 @@ export default function EspaceClientPage() {
   const firstName = user?.name?.split(' ')[0] ?? 'vous'
 
   return (
-    <main className="flex-1 px-6 py-8 max-w-4xl w-full">
-      <div className="mb-8 flex items-center justify-between">
+    <main className="flex-1 px-4 sm:px-6 py-6 sm:py-8 max-w-4xl w-full">
+      <div className="mb-6 sm:mb-8 flex items-start sm:items-center justify-between gap-3">
         <div>
-          <h1 className="font-display font-semibold text-2xl" style={{ color: 'var(--color-text)' }}>
+          <h1 className="font-display font-semibold text-xl sm:text-2xl" style={{ color: 'var(--color-text)' }}>
             Bonjour, {firstName} 👋
           </h1>
           <p className="text-sm mt-1" style={{ color: 'var(--color-text-secondary)' }}>
@@ -48,13 +48,13 @@ export default function EspaceClientPage() {
           </p>
         </div>
         <Link href="?publish=open"
-          className="px-5 py-2.5 rounded-full text-sm font-semibold text-white transition-opacity hover:opacity-90"
+          className="shrink-0 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-sm font-semibold text-white transition-opacity hover:opacity-90"
           style={{ background: 'var(--color-primary)' }}>
-          + Publier un bien
+          + Publier
         </Link>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6 sm:mb-8">
         <StatsCard label="Annonces publiées" value={published} />
         <StatsCard label="Brouillons"         value={drafts}   color="var(--color-text-secondary)" />
         <StatsCard label="Demandes reçues"    value={contacts.length} color="var(--color-accent)" />
