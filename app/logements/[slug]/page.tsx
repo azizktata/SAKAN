@@ -6,7 +6,7 @@ import { PropertyDetailClient } from './detail-client'
 
 type Props = { params: Promise<{ slug: string }> }
 
-const API = process.env.NEXT_PUBLIC_API_URL
+const API = process.env.API_URL
 
 async function fetchProperty(id: string): Promise<Property | null> {
   try {
