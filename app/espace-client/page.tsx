@@ -17,7 +17,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }
 function fmt(n: number) { return n.toLocaleString('fr-TN') }
 
 export default function EspaceClientPage() {
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
   const [properties, setProperties] = useState<Property[]>([])
   const [contacts, setContacts]     = useState<Contact[]>([])
   const [loading, setLoading]       = useState(true)
@@ -140,6 +140,25 @@ export default function EspaceClientPage() {
           </section>
         </>
       )}
+
+      {/* Mobile-only quick actions */}
+      <div className="flex sm:hidden flex-col gap-2 mt-4">
+        <Link
+          href="/"
+          className="flex items-center justify-between px-4 py-3.5 rounded-2xl"
+          style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+        >
+          <span className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>Retour à l'accueil</span>
+          <span style={{ color: 'var(--color-muted)' }}>→</span>
+        </Link>
+        <button
+          onClick={logout}
+          className="flex items-center justify-center px-4 py-3.5 rounded-2xl text-sm font-medium"
+          style={{ background: 'oklch(52% 0.15 25 / 0.06)', color: 'oklch(45% 0.15 25)' }}
+        >
+          Déconnexion
+        </button>
+      </div>
     </main>
   )
 }

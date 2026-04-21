@@ -11,6 +11,13 @@ const NAV = [
   { label: 'Mon profil',      href: '/espace-client/profil',    icon: IconUser },
 ]
 
+const NAV_MOBILE = [
+  { label: 'Bord',     href: '/espace-client',           icon: IconGrid },
+  { label: 'Annonces', href: '/espace-client/annonces',  icon: IconList },
+  { label: 'Contacts', href: '/espace-client/contacts',  icon: IconMail },
+  { label: 'Profil',   href: '/espace-client/profil',    icon: IconUser },
+]
+
 function IconGrid() {
   return (
     <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -43,6 +50,23 @@ function IconUser() {
     </svg>
   )
 }
+function IconHome() {
+  return (
+    <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75}
+        d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+    </svg>
+  )
+}
+
+function IconLogout() {
+  return (
+    <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75}
+        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+    </svg>
+  )
+}
 
 export function MobileBottomNav() {
   const pathname = usePathname()
@@ -57,8 +81,8 @@ export function MobileBottomNav() {
       className="fixed bottom-0 inset-x-0 flex lg:hidden border-t z-40"
       style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', height: '60px' }}
     >
-      {NAV.map(({ label, href, icon: Icon }) => {
-        const active = isActive(href)
+      {NAV_MOBILE.map(({ label, href, icon: Icon }) => {
+        const active = href === '/' ? pathname === '/' : isActive(href)
         return (
           <Link
             key={href}
@@ -67,7 +91,7 @@ export function MobileBottomNav() {
             style={{ color: active ? 'var(--color-primary)' : 'var(--color-muted)' }}
           >
             <Icon />
-            <span className="text-[10px] font-medium leading-none">{label.split(' ').pop()}</span>
+            <span className="text-[10px] font-medium leading-none">{label}</span>
           </Link>
         )
       })}
