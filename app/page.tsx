@@ -344,6 +344,73 @@ export default async function HomePage() {
           </div>
         </section> */}
  
+        {/* ── Estimation CTA ───────────────────────────────────────────────── */}
+        <section className="py-20 md:py-28 overflow-hidden" style={{ background: 'var(--color-surface)' }}>
+          <div className="max-w-7xl mx-auto px-6">
+            <div className="rounded-3xl overflow-hidden grid md:grid-cols-2"
+              style={{ background: 'oklch(42% 0.09 155 / 0.06)', border: '1px solid oklch(42% 0.09 155 / 0.1)' }}>
+
+              {/* Left: text */}
+              <div className="flex flex-col justify-center px-8 md:px-12 py-12 md:py-16">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] mb-4"
+                  style={{ color: 'var(--color-primary)' }}>
+                  Estimation gratuite
+                </p>
+                <h2 className="font-display font-semibold leading-tight mb-4"
+                  style={{ fontSize: 'clamp(1.6rem, 3vw, 2.25rem)', color: 'var(--color-text)' }}>
+                  Combien vaut votre bien&nbsp;?
+                </h2>
+                <p className="text-sm leading-relaxed mb-8 max-w-[42ch]"
+                  style={{ color: 'var(--color-text-secondary)' }}>
+                  Obtenez une estimation instantanée basée sur les données du marché tunisien 2024–2025.
+                  Vente ou location, appartement ou villa — en moins d&apos;une minute.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Link
+                    href="?estimer=open"
+                    className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                    style={{ background: 'var(--color-primary)' }}
+                  >
+                    Estimer mon bien
+                    <svg aria-hidden="true" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                    </svg>
+                  </Link>
+                </div>
+              </div>
+
+              {/* Right: visual stats */}
+              <div className="relative flex flex-col justify-center px-8 md:px-12 py-12 md:py-16 gap-4">
+                {[
+                  { city: 'Tunis',    type: 'Appartement', price: '3 200', unit: 'DT/m²' },
+                  { city: 'La Marsa', type: 'Villa',        price: '6 500', unit: 'DT/m²' },
+                  { city: 'Sousse',   type: 'Appartement', price: '2 600', unit: 'DT/m²' },
+                  { city: 'Sfax',     type: 'Maison',       price: '1 800', unit: 'DT/m²' },
+                ].map((row) => (
+                  <div key={row.city}
+                    className="flex items-center justify-between rounded-2xl px-5 py-4"
+                    style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+                    <div>
+                      <p className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>{row.city}</p>
+                      <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted)' }}>{row.type}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-display font-bold tabular-nums" style={{ color: 'var(--color-primary)', fontSize: '1.1rem' }}>
+                        {row.price}
+                      </p>
+                      <p className="text-xs" style={{ color: 'var(--color-muted)' }}>{row.unit}</p>
+                    </div>
+                  </div>
+                ))}
+                <p className="text-[0.65rem] text-center mt-1" style={{ color: 'var(--color-muted)' }}>
+                  Prix médians de vente · marché tunisien 2024–2025
+                </p>
+              </div>
+
+            </div>
+          </div>
+        </section>
+
         {/* ── Owner CTA — split with photo ─────────────────────────────────── */}
         <section className="overflow-hidden" style={{ background: 'var(--color-primary-dark)' }}>
           <div className="max-w-7xl mx-auto grid md:grid-cols-2" style={{ minHeight: '420px' }}>

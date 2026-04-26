@@ -90,12 +90,12 @@ Cookie-based BFF pattern — the Laravel backend sets an httpOnly `sakan_token` 
 
 Available namespaces:
 
-| Namespace | Key methods |
-|---|---|
-| `authApi` | `register`, `login`, `logout`, `me`, `googleRedirect` |
+| Namespace         | Key methods                                                                                    |
+| ----------------- | ---------------------------------------------------------------------------------------------- |
+| `authApi`       | `register`, `login`, `logout`, `me`, `googleRedirect`                                |
 | `propertiesApi` | `list(filters)`, `get(id)`, `create`, `update`, `delete`, `myList`, `myContacts` |
-| `uploadApi` | `presign(filename, contentType)` — returns S3/R2 pre-signed URL |
-| `adminApi` | `properties`, `updateProperty`, `deleteProperty`, `users`, `updateUser` |
+| `uploadApi`     | `presign(filename, contentType)` — returns S3/R2 pre-signed URL                             |
+| `adminApi`      | `properties`, `updateProperty`, `deleteProperty`, `users`, `updateUser`              |
 
 ## Dual Property Types
 
@@ -131,6 +131,7 @@ Tokens are defined in [app/globals.css](app/globals.css). **All colors use OKLCH
 ```
 
 Fonts loaded in [app/layout.tsx](app/layout.tsx) via `next/font/google`:
+
 - **Display + body**: `Inter` → CSS var `--font-inter`. Both `--font-display` and `--font-sans` in `globals.css` resolve to `var(--font-inter)` (the token table above showing `var(--font-zilla-slab)` / `var(--font-figtree)` is aspirational — not yet wired up).
 - Arabic fallback (Phase 2): `Cairo`
 
@@ -141,6 +142,7 @@ UI principles: mobile-first (test at 375px), one primary action per screen, soft
 ## Development Phases
 
 Phase 1 order:
+
 1. ✓ Design system & base UI
 2. ✓ Navbar
 3. ✓ Landing page

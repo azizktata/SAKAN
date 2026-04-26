@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -81,12 +81,88 @@ export function PublishDialog() {
   const [loadingEdit, setLoadingEdit] = useState(false)
   const [locations, setLocations]   = useState<Location[]>([])
   const [amenities, setAmenities]   = useState<Amenity[]>([])
+  const estPrefillRef = useRef<{
+    isFurnished: boolean; hasParking: boolean; hasElevator: boolean
+    hasGarden: boolean; hasPool: boolean
+  } | null>(null)
 
+  // Load reference data when dialog opens
   useEffect(() => {
     if (!open) return
     referenceApi.locations().then((r) => setLocations(r.data)).catch(() => {})
     referenceApi.amenities().then((r) => setAmenities(r.data)).catch(() => {})
   }, [open])
+
+  // Apply estimation prefill once dialog is open AND user is authenticated
+  // Runs on both open-change and user-change to handle the post-login redirect case
+  useEffect(() => {
+    if (!open || !user || editId) return
+    if (typeof window === 'undefined') return
+    const raw = sessionStorage.getItem('sakan_est_prefill')
+    if (!raw) return
+    try {
+      const est = JSON.parse(raw) as {
+        transactionType: 'vente' | 'location'
+        propertyType: string
+        address?: string
+        surface: number
+        bedrooms: number
+        bathrooms: number
+        floor: number
+        isFurnished: boolean
+        hasParking: boolean
+        hasElevator: boolean
+        hasGarden: boolean
+        hasPool: boolean
+        estimatedPrice?: number
+      }
+      form.setValue('transactionType', est.transactionType === 'vente' ? 'sale' : 'rent')
+      form.setValue('propertyType', est.propertyType as WizardSchema['propertyType'])
+      form.setValue('surface', est.surface)
+      form.setValue('bedrooms', est.bedrooms)
+      form.setValue('bathrooms', est.bathrooms)
+      form.setValue('floor', est.floor)
+      form.setValue('isFurnished', est.isFurnished)
+      if (est.estimatedPrice) form.setValue('price', est.estimatedPrice)
+      if (est.address) form.setValue('address', est.address)
+      // Store amenity flags — will be matched by name once amenities API resolves
+      estPrefillRef.current = {
+        isFurnished: est.isFurnished,
+        hasParking:  est.hasParking,
+        hasElevator: est.hasElevator,
+        hasGarden:   est.hasGarden,
+        hasPool:     est.hasPool,
+      }
+      sessionStorage.removeItem('sakan_est_prefill')
+      // Skip to step 3 (details) — type + location are pre-filled from estimation
+      setStep(3)
+    } catch {
+      // ignore malformed data
+    }
+  }, [open, user]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Map estimation amenity flags to API amenity IDs once amenities are loaded
+  useEffect(() => {
+    if (!amenities.length || !estPrefillRef.current) return
+    const flags = estPrefillRef.current
+    estPrefillRef.current = null
+    const AMENITY_MAP: { flag: keyof typeof flags; names: string[] }[] = [
+      { flag: 'isFurnished', names: ['meublé', 'meuble'] },
+      { flag: 'hasParking',  names: ['parking', 'garage'] },
+      { flag: 'hasElevator', names: ['ascenseur'] },
+      { flag: 'hasGarden',   names: ['jardin'] },
+      { flag: 'hasPool',     names: ['piscine'] },
+    ]
+    const ids: string[] = []
+    for (const { flag, names } of AMENITY_MAP) {
+      if (!flags[flag]) continue
+      const match = amenities.find((a) =>
+        names.some((n) => a.name.toLowerCase().includes(n))
+      )
+      if (match) ids.push(String(match.id))
+    }
+    if (ids.length) form.setValue('amenityIds', ids)
+  }, [amenities]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!open || !editId) return

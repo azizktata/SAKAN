@@ -1,6 +1,6 @@
 # Auth Architecture — SAKAN
 
-## Overview
+## Overview 
 
 SAKAN uses a **cookie-based BFF (Backend-for-Frontend) pattern**. The Laravel backend owns session state via an httpOnly `sakan_token` cookie. The Next.js frontend never handles raw tokens directly — it just reads a client-readable sentinel cookie (`sakan_token=1`) to know whether a session exists.
 
@@ -23,13 +23,13 @@ Browser
 
 ## Key Files
 
-| File | Role |
-|---|---|
-| [lib/api.ts](../lib/api.ts) | Axios instance + all API namespaces |
-| [lib/auth-context.tsx](../lib/auth-context.tsx) | React context — `useAuth()` hook |
-| [proxy.ts](../proxy.ts) | Next.js middleware — route protection |
-| [app/auth/page.tsx](../app/auth/page.tsx) | Login / register UI |
-| [app/auth/callback/page.tsx](../app/auth/callback/page.tsx) | Google OAuth landing page |
+| File                                                     | Role                                   |
+| -------------------------------------------------------- | -------------------------------------- |
+| [lib/api.ts](../lib/api.ts)                                 | Axios instance + all API namespaces    |
+| [lib/auth-context.tsx](../lib/auth-context.tsx)             | React context —`useAuth()` hook     |
+| [proxy.ts](../proxy.ts)                                     | Next.js middleware — route protection |
+| [app/auth/page.tsx](../app/auth/page.tsx)                   | Login / register UI                    |
+| [app/auth/callback/page.tsx](../app/auth/callback/page.tsx) | Google OAuth landing page              |
 
 ---
 
@@ -38,9 +38,11 @@ Browser
 The session state is held in two complementary places:
 
 ### 1. httpOnly Cookie (`sakan_token`)
+
 Set by Laravel on login/OAuth. Never readable by JavaScript — used by the browser to authenticate every API request automatically (via `withCredentials: true` on the Axios instance).
 
 ### 2. `localStorage` (`sakan_user`)
+
 The `User` object is cached in `localStorage` so the UI can render immediately without waiting for `GET /auth/me` to resolve on every page load. It is written by `writeLocalUser()` in `auth-context.tsx` and cleared on logout or a 401 response.
 
 > **Why two layers?** The cookie authenticates API calls; localStorage gives instant UI hydration. They are kept in sync by `fetchMe()` on mount and cleared together on logout.
@@ -55,13 +57,13 @@ Wraps the entire app in `app/layout.tsx` via `<AuthProvider>`.
 const { user, loading, logout, refresh, setUser } = useAuth()
 ```
 
-| Value | Type | Description |
-|---|---|---|
-| `user` | `User \| null` | Currently authenticated user, or `null` |
-| `loading` | `boolean` | `true` until first `GET /auth/me` resolves |
-| `logout()` | `async () => void` | Calls `POST /auth/logout`, clears cookie + localStorage, redirects to `/` |
-| `refresh()` | `async () => void` | Re-fetches `GET /auth/me` and updates state |
-| `setUser()` | `(User \| null) => void` | Manually override user state (used after login/register) |
+| Value         | Type                      | Description                                                                   |
+| ------------- | ------------------------- | ----------------------------------------------------------------------------- |
+| `user`      | `User \| null`           | Currently authenticated user, or `null`                                     |
+| `loading`   | `boolean`               | `true` until first `GET /auth/me` resolves                                |
+| `logout()`  | `async () => void`      | Calls `POST /auth/logout`, clears cookie + localStorage, redirects to `/` |
+| `refresh()` | `async () => void`      | Re-fetches `GET /auth/me` and updates state                                 |
+| `setUser()` | `(User \| null) => void` | Manually override user state (used after login/register)                      |
 
 ### Startup flow
 
@@ -90,6 +92,7 @@ const api = axios.create({
 ### 401 Interceptor
 
 Automatically redirects to `/auth` on any 401 response **except**:
+
 - `GET /auth/me` — handled by `AuthProvider` itself
 - `POST /auth/login` and `POST /auth/register` — errors shown inline
 - Property contact endpoints — contact form is public-ish
@@ -107,6 +110,7 @@ export const config = {
 ```
 
 On every request to those paths:
+
 1. Checks for the `sakan_token` cookie.
 2. If missing → redirects to `/auth?redirect=<original-path>`.
 3. If present → passes through.
@@ -152,11 +156,11 @@ The `redirect` param comes from `?redirect=` set by the middleware, so users lan
 type UserRole = 'particulier' | 'agent' | 'admin'
 ```
 
-| Role | Access |
-|---|---|
-| `particulier` | `/espace-client` — personal listings and contacts |
-| `agent` | `/espace-client` — same as particulier (extended features planned) |
-| `admin` | `/admin` — full platform management |
+| Role            | Access                                                                |
+| --------------- | --------------------------------------------------------------------- |
+| `particulier` | `/espace-client` — personal listings and contacts                  |
+| `agent`       | `/espace-client` — same as particulier (extended features planned) |
+| `admin`       | `/admin` — full platform management                                |
 
 Role is stored on the `User` object and checked client-side in layout components. Server-side enforcement is handled by Laravel middleware.
 

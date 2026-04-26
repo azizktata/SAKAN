@@ -11,6 +11,7 @@ export type User = {
   image?: string | null
   role: UserRole
   phone?: string | null
+  created_at?: string
 }
 
 export type PropertyStatus     = 'draft' | 'published' | 'sold' | 'rented'
@@ -102,6 +103,8 @@ export type AdminFilters = {
   status?: PropertyStatus
   page?: number
   per_page?: number
+  search?: string
+  sort?: 'newest' | 'oldest' | 'price_asc' | 'price_desc'
 }
 
 export type LoginPayload    = { email: string; password: string }
@@ -161,7 +164,7 @@ export const propertiesApi = {
   delete:     (id: string)                                         => api.delete(`/properties/${id}`),
   myList:     ()                                                   => api.get<Paginated<Property>>('/user/properties'),
   myContacts: ()                                                   => api.get<Paginated<Contact>>('/user/contacts'),
-  contact:    (id: string, data: { name: string; phone?: string; message: string }) =>
+  contact:    (id: string, data: { name: string; phone: string; message: string }) =>
                                                                       api.post(`/properties/${id}/contacts`, data),
 }
 
@@ -192,10 +195,26 @@ export const uploadApi = {
 
 // ── Admin ──────────────────────────────────────────────────────────────────────
 
+export type AdminUserFilters = {
+  page?: number
+  per_page?: number
+  search?: string
+}
+
+export type AdminCreateUserPayload = {
+  name: string
+  email: string
+  password: string
+  role: UserRole
+}
+
 export const adminApi = {
-  properties:     (params?: AdminFilters)                          => api.get<Property[]>('/admin/properties', { params }),
+  properties:     (params?: AdminFilters)                          => api.get<Paginated<Property>>('/admin/properties', { params }),
   updateProperty: (id: string, data: Partial<PropertyPayload>)    => api.patch<Property>(`/admin/properties/${id}`, data),
   deleteProperty: (id: string)                                     => api.delete(`/admin/properties/${id}`),
-  users:          ()                                               => api.get<User[]>('/admin/users'),
+  users:          (params?: AdminUserFilters)                      => api.get<Paginated<User>>('/admin/users', { params }),
   updateUser:     (id: string, data: { role?: UserRole })         => api.patch<User>(`/admin/users/${id}`, data),
+  deleteUser:     (id: string)                                     => api.delete(`/admin/users/${id}`),
+  createUser:     (data: AdminCreateUserPayload)                   => api.post<User>('/admin/users', data),
+  stats:          ()                                               => api.get<{ total_properties: number; published: number; drafts: number; total_users: number }>('/admin/stats'),
 }

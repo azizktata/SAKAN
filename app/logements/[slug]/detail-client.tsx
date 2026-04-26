@@ -194,7 +194,7 @@ function ContactPanel({ prop, onClose }: { prop: Property; onClose: () => void }
     try {
       await propertiesApi.contact(prop.id, {
         name,
-        phone: phone.trim() || undefined,
+        phone: phone.trim(),
         message,
       })
       setSent(true)
@@ -251,8 +251,8 @@ function ContactPanel({ prop, onClose }: { prop: Property; onClose: () => void }
               onChange={(e) => setName(e.target.value)} required
               className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-2"
               style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }} />
-            <input type="tel" placeholder="Téléphone (facultatif)" value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+            <input type="tel" placeholder="Téléphone *" value={phone}
+              onChange={(e) => setPhone(e.target.value)} required
               className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-2"
               style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }} />
             <textarea placeholder="Votre message… *" value={message}

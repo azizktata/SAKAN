@@ -49,10 +49,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     writeLocalUser(u);
   }
 
-  async function fetchMe() {
+  async function fetchMe(redirectIfAdmin = false) {
     try {
       const res = await authApi.me();
       setUser(res.data);
+      // After OAuth redirect: admin lands on "/" — send them to /admin
+      if (redirectIfAdmin && res.data.role === 'admin' && typeof window !== 'undefined') {
+        const path = window.location.pathname
+        if (path === '/' || path === '') {
+          window.location.href = '/admin'
+        }
+      }
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response
         ?.status;
@@ -66,7 +73,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
-    fetchMe();
+    // Pass redirectIfAdmin=true on initial load so Google OAuth callbacks redirect admins
+    fetchMe(true);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const logout = async () => {
@@ -81,7 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, logout, refresh: fetchMe, setUser }}
+      value={{ user, loading, logout, refresh: () => fetchMe(false), setUser }}
     >
       {children}
     </AuthContext.Provider>

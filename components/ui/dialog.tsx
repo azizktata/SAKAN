@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 
 interface DialogProps {
@@ -8,9 +8,12 @@ interface DialogProps {
   onClose: () => void
   children: React.ReactNode
   maxWidth?: string
+  scrollKey?: string | number
 }
 
-export function Dialog({ open, onClose, children, maxWidth = 'max-w-lg' }: DialogProps) {
+export function Dialog({ open, onClose, children, maxWidth = 'max-w-lg', scrollKey }: DialogProps) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
     if (!open) return
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -22,6 +25,10 @@ export function Dialog({ open, onClose, children, maxWidth = 'max-w-lg' }: Dialo
     document.body.style.overflow = open ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }
   }, [open])
+
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = 0
+  }, [scrollKey])
 
   if (!open || typeof window === 'undefined') return null
 
@@ -38,6 +45,7 @@ export function Dialog({ open, onClose, children, maxWidth = 'max-w-lg' }: Dialo
       {/* Content wrapper — pointer-events-none so clicks outside the box hit the backdrop */}
       <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 pointer-events-none">
         <div
+          ref={scrollRef}
           className={`w-full ${maxWidth} max-h-[92dvh] overflow-y-auto rounded-t-3xl sm:rounded-3xl pointer-events-auto`}
           style={{ background: 'var(--color-surface)' }}
         >

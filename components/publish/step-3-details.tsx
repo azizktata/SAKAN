@@ -45,10 +45,9 @@ function Stepper({ label, value, onChange, min = 0 }: { label: string; value: nu
 
 export function Step3Details({ form }: Props) {
   const { register, setValue, watch, formState: { errors } } = form
-  const bedrooms    = watch('bedrooms')    ?? 1
-  const bathrooms   = watch('bathrooms')   ?? 1
-  const floor       = watch('floor')       ?? 0
-  const isFurnished = watch('isFurnished') ?? false
+  const bedrooms  = watch('bedrooms')  ?? 1
+  const bathrooms = watch('bathrooms') ?? 1
+  const floor     = watch('floor')     ?? 0
 
   return (
     <div className="space-y-5">
@@ -109,22 +108,6 @@ export function Step3Details({ form }: Props) {
           <Stepper label="Étage"       value={floor}     onChange={(n) => setValue('floor',     n)} min={0} />
         </div>
       </div>
-
-      {/* Furnished toggle */}
-      <button
-        type="button"
-        onClick={() => setValue('isFurnished', !isFurnished)}
-        className="w-full flex items-center justify-between px-4 py-3.5 rounded-2xl border transition-all"
-        style={{
-          borderColor: isFurnished ? 'var(--color-primary)' : 'var(--color-border)',
-          background:  isFurnished ? 'oklch(42% 0.09 155 / 0.06)' : 'transparent',
-        }}
-      >
-        <span className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>Bien meublé</span>
-        <div className="w-11 h-6 rounded-full relative transition-colors" style={{ background: isFurnished ? 'var(--color-primary)' : 'var(--color-border)' }}>
-          <div className="absolute top-1 w-4 h-4 bg-white rounded-full transition-all shadow-sm" style={{ left: isFurnished ? '1.375rem' : '0.25rem' }} />
-        </div>
-      </button>
 
       {/* Description */}
       <div>

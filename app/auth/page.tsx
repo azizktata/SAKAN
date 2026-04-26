@@ -48,7 +48,7 @@ function AuthForm() {
   const { setUser }       = useAuth()
   const router            = useRouter()
   const searchParams      = useSearchParams()
-  const redirect          = searchParams.get('redirect') ?? '/espace-client'
+  const redirectParam     = searchParams.get('redirect')
 
   const loginForm = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
@@ -60,7 +60,8 @@ function AuthForm() {
   function afterAuth(user: import('@/lib/api').User) {
     setUser(user)
     document.cookie = 'sakan_session=1; path=/; max-age=86400; SameSite=None; Secure'
-    window.location.href = redirect
+    const dest = redirectParam ?? (user.role === 'admin' ? '/admin' : '/espace-client')
+    window.location.href = dest
   }
 
   async function onLogin(data: LoginForm) {

@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { PublishDialogClient } from '@/components/publish/publish-dialog-client'
+import { EstimationDialogClient } from '@/components/estimation/estimation-dialog-client'
 import { AuthProvider } from '@/lib/auth-context'
 import { ToastProvider } from '@/components/ui/toast'
 
@@ -27,6 +28,7 @@ export default function RootLayout({
             <ToastProvider>
               {children}
               <PublishDialogClient />
+              <EstimationDialogClient />
             </ToastProvider>
           </AuthProvider>
         </body>

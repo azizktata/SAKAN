@@ -79,6 +79,34 @@ function PublishButton({ scrolled }: { scrolled: boolean }) {
   )
 }
 
+// ── Estimer button (opens estimation dialog via ?estimer=open) ────────────────
+
+function EstimerButton({ scrolled }: { scrolled: boolean }) {
+  const router       = useRouter()
+  const pathname     = usePathname()
+  const searchParams = useSearchParams()
+
+  function open() {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('estimer', 'open')
+    router.push(`${pathname}?${params.toString()}`, { scroll: false })
+  }
+
+  const color = scrolled ? 'var(--color-text-secondary)' : 'rgba(255,255,255,0.72)'
+
+  return (
+    <button
+      onClick={open}
+      className="text-sm font-medium transition-colors duration-200"
+      style={{ color }}
+      onMouseEnter={(e) => (e.currentTarget.style.color = scrolled ? 'var(--color-text)' : 'white')}
+      onMouseLeave={(e) => (e.currentTarget.style.color = color)}
+    >
+      Estimer
+    </button>
+  )
+}
+
 // ── User avatar dropdown (logged-in state, desktop) ───────────────────────────
 
 type AuthUser = { name: string; image?: string | null; role: string }
@@ -101,13 +129,13 @@ function UserMenu({ user, scrolled }: { user: AuthUser; scrolled: boolean }) {
   return (
     <div ref={ref} className="relative flex items-center gap-3">
       <Link
-        href="/espace-client"
+        href={user.role === 'admin' ? '/admin' : '/espace-client'}
         className="px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200"
         style={scrolled
           ? { background: 'var(--color-primary)', color: 'white' }
           : { background: 'white', color: 'var(--color-primary-dark)' }}
       >
-        Espace client
+        {user.role === 'admin' ? 'Espace admin' : 'Espace client'}
       </Link>
 
       <button
@@ -273,6 +301,14 @@ function MobileMenu({ scrolled }: { scrolled: boolean }) {
           {/* Footer actions */}
           <div className="px-4 py-4 border-t space-y-2 shrink-0" style={{ borderColor: 'var(--color-border)' }}>
             <Link
+              href="?estimer=open"
+              onClick={() => setOpen(false)}
+              className="flex items-center justify-center w-full py-3 rounded-2xl text-sm font-semibold border"
+              style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}
+            >
+              Estimer mon bien
+            </Link>
+            <Link
               href="?publish=open"
               onClick={() => setOpen(false)}
               className="flex items-center justify-center w-full py-3 rounded-2xl text-sm font-semibold text-white"
@@ -335,6 +371,10 @@ export function Navbar({ initialDark = false }: NavbarProps) {
         <div className="hidden md:flex items-center gap-6">
           <Suspense fallback={<NavLinksFallback scrolled={scrolled} />}>
             <NavLinksInner scrolled={scrolled} />
+          </Suspense>
+
+          <Suspense>
+            <EstimerButton scrolled={scrolled} />
           </Suspense>
 
           <span className="w-px h-4 rounded" aria-hidden="true"

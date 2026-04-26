@@ -19,21 +19,43 @@ const TYPE_LABELS: Record<string, string> = {
 
 export default function AdminPage() {
   const [properties, setProperties] = useState<Property[]>([])
-  const [users, setUsers]           = useState<User[]>([])
-  const [loading, setLoading]       = useState(true)
+  const [stats, setStats] = useState({ total_properties: 0, published: 0, drafts: 0, total_users: 0 })
+  const [totalUsers, setTotalUsers] = useState(0)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    Promise.all([adminApi.properties(), adminApi.users()])
-      .then(([propsRes, usersRes]) => {
-        setProperties(propsRes.data)
-        setUsers(usersRes.data)
+    const statsPromise = adminApi.stats()
+      .then((r) => setStats(r.data))
+      .catch(() => null)
+
+    const propsPromise = adminApi.properties({ per_page: 5, sort: 'newest' })
+      .then((r) => {
+        setProperties(r.data.data)
+        // If stats endpoint not available, derive counts from paginated meta
+        statsPromise.then((s) => {
+          if (s === null) {
+            setStats((prev) => ({
+              ...prev,
+              total_properties: r.data.total,
+            }))
+          }
+        })
       })
       .catch(() => {})
-      .finally(() => setLoading(false))
+
+    const usersPromise = adminApi.users({ per_page: 1 })
+      .then((r) => setTotalUsers(r.data.total))
+      .catch(() => {})
+
+    Promise.all([statsPromise, propsPromise, usersPromise]).finally(() => setLoading(false))
   }, [])
 
-  const published = properties.filter((p) => p.status === 'published').length
-  const drafts    = properties.filter((p) => p.status === 'draft').length
+  const displayStats = {
+    published:  stats.published  || properties.filter((p) => p.status === 'published').length,
+    drafts:     stats.drafts     || properties.filter((p) => p.status === 'draft').length,
+    total:      stats.total_properties,
+    users:      stats.total_users || totalUsers,
+  }
 
   return (
     <main className="flex-1 px-6 py-8 max-w-4xl w-full">
@@ -42,15 +64,15 @@ export default function AdminPage() {
           Tableau de bord
         </h1>
         <p className="text-sm mt-1" style={{ color: 'var(--color-text-secondary)' }}>
-          Vue d'ensemble de la plateforme SAKAN.
+          Vue d&apos;ensemble de la plateforme SAKAN.
         </p>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-        <StatsCard label="Biens publiés"  value={published} />
-        <StatsCard label="Brouillons"     value={drafts}   color="var(--color-text-secondary)" />
-        <StatsCard label="Total biens"    value={properties.length} />
-        <StatsCard label="Utilisateurs"   value={users.length} color="var(--color-accent)" />
+        <StatsCard label="Biens publiés"  value={displayStats.published} />
+        <StatsCard label="Brouillons"     value={displayStats.drafts}    color="var(--color-text-secondary)" />
+        <StatsCard label="Total biens"    value={displayStats.total} />
+        <StatsCard label="Utilisateurs"   value={displayStats.users}     color="var(--color-accent)" />
       </div>
 
       {loading ? (
@@ -79,7 +101,7 @@ export default function AdminPage() {
                 </tr>
               </thead>
               <tbody className="divide-y" style={{ background: 'var(--color-surface)' }}>
-                {properties.slice(0, 5).map((p) => {
+                {properties.map((p) => {
                   const s = STATUS_META[p.status] ?? STATUS_META.draft
                   return (
                     <tr key={p.id}>
@@ -101,6 +123,13 @@ export default function AdminPage() {
                     </tr>
                   )
                 })}
+                {properties.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-10 text-center text-sm" style={{ color: 'var(--color-muted)' }}>
+                      Aucune annonce.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
