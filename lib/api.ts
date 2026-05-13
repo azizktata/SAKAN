@@ -116,12 +116,13 @@ export type AdminFilters = {
   sort?: 'newest' | 'oldest' | 'price_asc' | 'price_desc'
 }
 
-export type LoginPayload    = { email: string; password: string }
+export type LoginPayload    = { email: string; password: string; visitor_key?: string }
 export type RegisterPayload = {
   name: string
   email: string
   password: string
   password_confirmation: string
+  visitor_key?: string
 }
 
 // ── Axios instance ─────────────────────────────────────────────────────────────
