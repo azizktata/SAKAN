@@ -6,7 +6,8 @@ import dynamic from 'next/dynamic'
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Navbar } from '@/components/layout/navbar'
-import { propertiesApi, referenceApi, type Property, type Location, type Amenity } from '@/lib/api'
+import { propertiesApi, referenceApi, analyticsApi, type Property, type Location, type Amenity } from '@/lib/api'
+import { getVisitorKey } from '@/lib/visitor'
 import { TYPES } from '@/data/property-types'
 
 const MapView = dynamic(
@@ -179,6 +180,19 @@ export function ListingView() {
           setProperties((prev) => isFirstPage ? d.data : [...prev, ...d.data])
           setTotal(d.total)
           setLastPage(d.last_page)
+          analyticsApi.trackSearch({
+            search_id: crypto.randomUUID(),
+            filters: {
+              transaction_type: mode === 'vente' ? 'sale' : mode === 'location' ? 'rent' : undefined,
+              property_type: type !== 'Tous' ? type : undefined,
+              location_id: locationId || undefined,
+              min_price: minPrice ? Number(minPrice) : undefined,
+              max_price: maxPrice ? Number(maxPrice) : undefined,
+              bedrooms: bedrooms > 0 ? bedrooms : undefined,
+            },
+            results_count: d.total ?? d.data?.length ?? 0,
+            visitor_key: getVisitorKey(),
+          }).catch(() => {})
         })
         .catch(() => {
           if (!cancelled && isFirstPage) setProperties([])
@@ -621,7 +635,7 @@ function PropertyCard({ prop }: { prop: Property }) {
   }
 
   return (
-    <Link href={`/logements/${prop.id}`}>
+    <Link href={`/logements/${prop.id}?ref=listing`}>
     <article
       className="group rounded-2xl overflow-hidden shadow-[0_2px_12px_rgb(0_0_0/0.06)] hover:shadow-[0_10px_36px_rgb(0_0_0/0.12)] transition-shadow duration-300 cursor-pointer"
       style={{ background: 'var(--color-surface)' }}

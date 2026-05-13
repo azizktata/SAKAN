@@ -106,7 +106,6 @@ export default async function HomePage() {
       <Navbar initialDark />
 
       <main>
-        {/* ── Hero ─────────────────────────────────────────────────────────── */}
         <section
           className="relative flex flex-col justify-center items-center pt-20 pb-14 overflow-hidden"
           style={{ minHeight: '480px', maxHeight: '600px' }}

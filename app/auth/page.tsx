@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { authApi } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
+import { getVisitorKey } from '@/lib/visitor'
 
 const loginSchema = z.object({
   email:    z.string().email('Email invalide'),
@@ -67,7 +68,7 @@ function AuthForm() {
   async function onLogin(data: LoginForm) {
     setError(null)
     try {
-      const res = await authApi.login(data)
+      const res = await authApi.login({ ...data, visitor_key: getVisitorKey() })
       afterAuth(res.data.user)
     } catch {
       setError('Identifiants invalides. Vérifiez votre email et mot de passe.')
@@ -77,7 +78,7 @@ function AuthForm() {
   async function onRegister(data: RegisterForm) {
     setError(null)
     try {
-      const res = await authApi.register(data)
+      const res = await authApi.register({ ...data, visitor_key: getVisitorKey() })
       afterAuth(res.data.user)
     } catch {
       setError("Erreur lors de la création du compte. Cet email est peut-être déjà utilisé.")

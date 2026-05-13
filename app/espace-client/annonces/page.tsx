@@ -2,8 +2,9 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { PropertyCardManage, type ManagedProperty } from '@/components/espace-client/property-card-manage'
-import { propertiesApi } from '@/lib/api'
+import { PropertyCardManage, type ManagedProperty, type PropertyCardStats } from '@/components/espace-client/property-card-manage'
+import { propertiesApi, analyticsApi, type PropertyStats } from '@/lib/api'
+import { StatsDrawer } from './stats-drawer'
 
 function toManaged(p: {
   id: string; title: string; price: number; status: string; transaction_type: string;
@@ -24,11 +25,34 @@ function toManaged(p: {
 
 export default function AnnoncesPage() {
   const [properties, setProperties] = useState<ManagedProperty[]>([])
+  const [statsMap, setStatsMap]     = useState<Record<string, PropertyCardStats>>({})
   const [loading, setLoading]       = useState(true)
+  const [drawerOpen, setDrawerOpen] = useState<{ id: string; title: string } | null>(null)
 
   useEffect(() => {
     propertiesApi.myList()
-      .then((res) => setProperties(res.data.data.map(toManaged)))
+      .then((res) => {
+        const managed = res.data.data.map(toManaged)
+        setProperties(managed)
+        // Fetch summary stats for all properties in one call
+        return analyticsApi.ownerSummary().then(s => s.data).catch(() => null).then(summary => {
+          if (!summary) return
+          // Fetch per-property stats individually for badge display
+          managed.forEach(p => {
+            analyticsApi.propertyStats(p.id).then(r => {
+              setStatsMap(prev => ({
+                ...prev,
+                [p.id]: {
+                  total_views:     r.data.total_views,
+                  unique_views:    r.data.unique_views,
+                  total_contacts:  r.data.total_contacts,
+                  conversion_rate: r.data.conversion_rate,
+                },
+              }))
+            }).catch(() => {})
+          })
+        })
+      })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
@@ -70,7 +94,7 @@ export default function AnnoncesPage() {
         <div className="text-center py-20">
           <p className="text-4xl mb-4">🏠</p>
           <p className="font-display font-semibold mb-2" style={{ color: 'var(--color-text)' }}>
-            Aucune annonce pour l'instant
+            Aucune annonce pour l&apos;instant
           </p>
           <p className="text-sm mb-6" style={{ color: 'var(--color-text-secondary)' }}>
             Publiez votre premier bien en quelques minutes.
@@ -87,11 +111,21 @@ export default function AnnoncesPage() {
             <PropertyCardManage
               key={p.id}
               property={p}
+              stats={statsMap[p.id]}
               onDelete={handleDelete}
               onToggleStatus={handleToggleStatus}
+              onViewStats={(id) => setDrawerOpen({ id, title: p.title })}
             />
           ))}
         </div>
+      )}
+
+      {drawerOpen && (
+        <StatsDrawer
+          propertyId={drawerOpen.id}
+          title={drawerOpen.title}
+          onClose={() => setDrawerOpen(null)}
+        />
       )}
     </main>
   )

@@ -79,6 +79,12 @@ export interface EstimationInput {
   hasElevator: boolean
   hasGarden: boolean
   hasPool: boolean
+  // Extended inputs
+  parkingSpaces?:    number
+  gardenSurface?:    number   // m²
+  terraceSurface?:   number   // m²
+  hasTerrace?:       boolean
+  buildingYearRange?: string | null
 }
 
 export interface EstimationFactor {
@@ -95,9 +101,38 @@ export interface EstimationResult {
   factors: EstimationFactor[]
 }
 
+const BUILDING_AGE_FACTOR: [number, number, number][] = [
+  // [minAge, maxAge, factor]
+  [0,  5,  1.00],
+  [6,  15, 0.98],
+  [16, 30, 0.95],
+  [31, 50, 0.90],
+  [51, Infinity, 0.85],
+]
+
+const YEAR_RANGE_TO_AGE: Record<string, number> = {
+  '2020+':     2,
+  '2010-2019': 12,
+  '2000-2009': 22,
+  '1990-1999': 32,
+  '1980-1989': 42,
+  'avant-1980': 55,
+}
+
+function buildingAgeFactor(yearRange: string | null | undefined): number {
+  if (!yearRange) return 1.0
+  const age = YEAR_RANGE_TO_AGE[yearRange]
+  if (age === undefined) return 1.0
+  for (const [min, max, factor] of BUILDING_AGE_FACTOR) {
+    if (age >= min && age <= max) return factor
+  }
+  return 1.0
+}
+
 export function estimate(input: EstimationInput): EstimationResult {
   const { transactionType, propertyType, citySlug, surface, bedrooms, floor,
-          condition, isFurnished, hasParking, hasElevator, hasGarden, hasPool } = input
+          condition, isFurnished, hasParking, hasElevator, hasGarden, hasPool,
+          parkingSpaces, gardenSurface, terraceSurface, hasTerrace, buildingYearRange } = input
 
   const table = transactionType === 'vente' ? SALE_PRICE_PER_M2 : RENT_PRICE_PER_M2
   const cityRow = table[citySlug] ?? table['_default']
@@ -161,13 +196,35 @@ export function estimate(input: EstimationInput): EstimationResult {
     factors.push({ label: 'Meublé', impact: 'positive', detail: 'Inclus dans la vente (+4%)' })
   }
 
-  // Amenities
-  const amenityBonus = (hasParking ? 0.03 : 0) + (hasElevator ? 0.02 : 0) + (hasGarden ? 0.03 : 0) + (hasPool ? 0.05 : 0)
+  // Amenities — richer formula using sub-inputs
+  const parkingBonus   = hasParking  ? Math.min(0.04, 0.02 + ((parkingSpaces  ?? 1) - 1) * 0.005) : 0
+  const gardenBonus    = hasGarden   ? Math.min(0.05, ((gardenSurface   ?? 0) / 50) * 0.01) : 0
+  const terraceBonus   = hasTerrace  ? Math.min(0.03, ((terraceSurface  ?? 0) / 30) * 0.01) : 0
+  const elevatorBonus  = hasElevator ? 0.02 : 0
+  const poolBonus      = hasPool     ? 0.05 : 0
+
+  const amenityBonus = parkingBonus + gardenBonus + terraceBonus + elevatorBonus + poolBonus
   if (amenityBonus > 0) {
     multiplier *= (1 + amenityBonus)
-    const list = [hasParking && 'parking', hasElevator && 'ascenseur', hasGarden && 'jardin', hasPool && 'piscine']
-      .filter(Boolean).join(', ')
+    const list = [
+      hasParking  && `parking${(parkingSpaces ?? 1) > 1 ? ` ×${parkingSpaces}` : ''}`,
+      hasElevator && 'ascenseur',
+      hasGarden   && `jardin${gardenSurface ? ` ${gardenSurface}m²` : ''}`,
+      hasTerrace  && `terrasse${terraceSurface ? ` ${terraceSurface}m²` : ''}`,
+      hasPool     && 'piscine',
+    ].filter(Boolean).join(', ')
     factors.push({ label: 'Équipements', impact: 'positive', detail: `${list} (+${Math.round(amenityBonus * 100)}%)` })
+  }
+
+  // Building age (applied independently of condition — an old bien-entretenu still depreciates)
+  const ageFactor = buildingAgeFactor(buildingYearRange)
+  if (ageFactor < 1.0) {
+    multiplier *= ageFactor
+    factors.push({
+      label: 'Année de construction',
+      impact: 'negative',
+      detail: `${buildingYearRange} (${Math.round((ageFactor - 1) * 100)}%)`,
+    })
   }
 
   const round = transactionType === 'location' ? 50 : 1000

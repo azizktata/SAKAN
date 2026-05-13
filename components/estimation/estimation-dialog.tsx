@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { Dialog } from '@/components/ui/dialog'
 import { estimate, type EstimationInput, type EstimationResult } from '@/lib/estimation-engine'
+import { estimationApi } from '@/lib/api'
 import { EstStep1Type } from './est-step-1-type'
 import { EstStep2Location } from './est-step-2-location'
 import { EstStep3Details } from './est-step-3-details'
@@ -11,22 +12,52 @@ import { EstStep4Result } from './est-step-4-result'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type EstFormData = Omit<EstimationInput, never>
+export type BuildingYearRange = '2020+' | '2010-2019' | '2000-2009' | '1990-1999' | '1980-1989' | 'avant-1980'
+
+export type EstFormData = EstimationInput & {
+  governorate:      string
+  neighborhood:     string
+  zoneScore:        number
+  // Extended amenities (beyond the 5 in EstimationInput)
+  hasTerrace:       boolean
+  hasBalcony:       boolean
+  hasSecurity:      boolean
+  hasAirConditioning: boolean
+  hasHeating:       boolean
+  // Amenity sub-inputs (only relevant when parent flag is true)
+  parkingSpaces:    number
+  gardenSurface:    number   // m²
+  terraceSurface:   number   // m²
+  // Construction year
+  buildingYearRange: BuildingYearRange | null
+}
 
 const DEFAULT_FORM: EstFormData = {
   transactionType: 'vente',
   propertyType:    'apartment',
   citySlug:        'tunis',
+  governorate:     'Tunis',
+  neighborhood:    '',
+  zoneScore:       4,
   surface:         80,
   bedrooms:        2,
   bathrooms:       1,
   floor:           1,
   condition:       'bon_etat',
-  isFurnished:     false,
-  hasParking:      false,
-  hasElevator:     false,
-  hasGarden:       false,
-  hasPool:         false,
+  isFurnished:        false,
+  hasParking:         false,
+  hasElevator:        false,
+  hasGarden:          false,
+  hasPool:            false,
+  hasTerrace:         false,
+  hasBalcony:         false,
+  hasSecurity:        false,
+  hasAirConditioning: false,
+  hasHeating:         false,
+  parkingSpaces:      1,
+  gardenSurface:      0,
+  terraceSurface:     0,
+  buildingYearRange:  null,
 }
 
 const STEPS = [
@@ -47,9 +78,10 @@ export function EstimationDialog() {
 
   const open = searchParams.get('estimer') === 'open'
 
-  const [step, setStep]         = useState(1)
-  const [form, setForm]         = useState<EstFormData>(DEFAULT_FORM)
-  const [result, setResult]     = useState<EstimationResult | null>(null)
+  const [step, setStep]             = useState(1)
+  const [form, setForm]             = useState<EstFormData>(DEFAULT_FORM)
+  const [result, setResult]         = useState<EstimationResult | null>(null)
+  const [estimationId, setEstimationId] = useState<string | null>(null)
 
   const close = useCallback(() => {
     const params = new URLSearchParams(searchParams.toString())
@@ -60,6 +92,7 @@ export function EstimationDialog() {
       setStep(1)
       setForm(DEFAULT_FORM)
       setResult(null)
+      setEstimationId(null)
     }, 300)
   }, [searchParams, router, pathname])
 
@@ -71,7 +104,71 @@ export function EstimationDialog() {
     if (step > 1) setStep((s) => s - 1)
   }
 
-  function handleEstimate() {
+  const YEAR_RANGE_TO_AGE: Record<string, number> = {
+    '2020+':     2,
+    '2010-2019': 12,
+    '2000-2009': 22,
+    '1990-1999': 32,
+    '1980-1989': 42,
+    'avant-1980': 55,
+  }
+
+  async function handleEstimate() {
+    const amenitiesCount = [
+      form.hasParking, form.hasElevator, form.hasGarden, form.hasPool, form.isFurnished,
+      form.hasTerrace, form.hasBalcony, form.hasSecurity, form.hasAirConditioning, form.hasHeating,
+    ].filter(Boolean).length
+
+    const buildingAge = form.buildingYearRange ? YEAR_RANGE_TO_AGE[form.buildingYearRange] : undefined
+
+    try {
+      const apiResult = await estimationApi.estimate({
+        city:             form.citySlug,
+        property_type:    form.propertyType,
+        transaction_type: form.transactionType,
+        surface:          form.surface,
+        bedrooms:         form.bedrooms,
+        condition:        form.condition,
+        zone_score:       form.zoneScore,
+        amenities_count:  amenitiesCount,
+        neighborhood:     form.neighborhood || undefined,
+        governorate:      form.governorate || undefined,
+        garden_surface:   form.hasGarden && form.gardenSurface > 0 ? form.gardenSurface : undefined,
+        parking_spaces:   form.hasParking ? form.parkingSpaces : undefined,
+        terrace_surface:  form.hasTerrace && form.terraceSurface > 0 ? form.terraceSurface : undefined,
+        building_age:     buildingAge,
+      })
+
+      if (apiResult.estimation_id) {
+        setEstimationId(apiResult.estimation_id)
+      }
+
+      if (!apiResult.fallback) {
+        // Build location label: "Khezama, Sousse" or just "Tunis"
+        const cityLabel = form.citySlug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+        const locLabel  = form.neighborhood ? `${form.neighborhood}, ${cityLabel}` : cityLabel
+
+        setResult({
+          low:     apiResult.low,
+          mid:     apiResult.mid,
+          high:    apiResult.high,
+          unit:    apiResult.unit,
+          factors: [
+            { label: 'Localisation', impact: 'neutral', detail: `${locLabel} — données marché réelles` },
+            { label: 'Surface',      impact: 'neutral', detail: `${form.surface} m² — base de calcul` },
+            ...(apiResult.confidence !== undefined
+              ? [{ label: 'Fiabilité', impact: (apiResult.confidence >= 0.6 ? 'positive' : 'neutral') as 'positive' | 'neutral', detail: `Score de confiance : ${Math.round(apiResult.confidence * 100)}%` }]
+              : []),
+          ],
+        })
+        setStep(4)
+        return
+      }
+    } catch {
+      // Network error or ML unavailable — fall through to local engine
+    }
+
+    // Fallback: local heuristic engine
     const res = estimate(form)
     setResult(res)
     setStep(4)
@@ -81,6 +178,7 @@ export function EstimationDialog() {
     setStep(1)
     setForm(DEFAULT_FORM)
     setResult(null)
+    setEstimationId(null)
   }
 
   function openPublish() {
@@ -152,7 +250,13 @@ export function EstimationDialog() {
         {step === 2 && <EstStep2Location form={form} setForm={setForm} />}
         {step === 3 && <EstStep3Details form={form} setForm={setForm} />}
         {step === 4 && result && (
-          <EstStep4Result result={result} form={form} onRestart={handleRestart} onPublish={openPublish} />
+          <EstStep4Result
+            result={result}
+            form={form}
+            estimationId={estimationId}
+            onRestart={handleRestart}
+            onPublish={openPublish}
+          />
         )}
       </div>
 

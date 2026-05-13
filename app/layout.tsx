@@ -5,6 +5,7 @@ import { PublishDialogClient } from '@/components/publish/publish-dialog-client'
 import { EstimationDialogClient } from '@/components/estimation/estimation-dialog-client'
 import { AuthProvider } from '@/lib/auth-context'
 import { ToastProvider } from '@/components/ui/toast'
+import SessionProvider from '@/components/session-provider'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -25,11 +26,13 @@ export default function RootLayout({
     <html lang="fr" className={inter.variable}>
       <body className="min-h-full flex flex-col">
           <AuthProvider>
-            <ToastProvider>
-              {children}
-              <PublishDialogClient />
-              <EstimationDialogClient />
-            </ToastProvider>
+            <SessionProvider>
+              <ToastProvider>
+                {children}
+                <PublishDialogClient />
+                <EstimationDialogClient />
+              </ToastProvider>
+            </SessionProvider>
           </AuthProvider>
         </body>
     </html>

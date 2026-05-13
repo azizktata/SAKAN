@@ -1,15 +1,74 @@
+'use client'
+
+import { useState } from 'react'
 import type { EstimationResult } from '@/lib/estimation-engine'
 import type { EstFormData } from './estimation-dialog'
+import { estimationApi } from '@/lib/api'
 
 function fmt(n: number) {
   return n.toLocaleString('fr-TN')
 }
 
 interface Props {
-  result:    EstimationResult
-  form:      EstFormData
-  onRestart: () => void
-  onPublish: () => void
+  result:       EstimationResult
+  form:         EstFormData
+  estimationId: string | null
+  onRestart:    () => void
+  onPublish:    () => void
+}
+
+type Opinion = 'too_high' | 'correct' | 'too_low'
+
+function EstimationFeedback({ estimationId }: { estimationId: string }) {
+  const [submitted, setSubmitted] = useState(false)
+  const [loading, setLoading]     = useState(false)
+
+  async function submitFeedback(opinion: Opinion) {
+    if (loading || submitted) return
+    setLoading(true)
+    try {
+      await estimationApi.feedback(estimationId, opinion)
+    } catch {
+      // Silent — feedback failure must not disrupt UX
+    } finally {
+      setLoading(false)
+      setSubmitted(true)
+    }
+  }
+
+  if (submitted) {
+    return (
+      <p className="text-center text-sm py-2" style={{ color: 'var(--color-primary)' }}>
+        Merci pour votre retour !
+      </p>
+    )
+  }
+
+  return (
+    <div className="text-center space-y-2">
+      <p className="text-xs font-medium" style={{ color: 'var(--color-muted)' }}>
+        Cette estimation était-elle précise ?
+      </p>
+      <div className="flex items-center justify-center gap-2">
+        {([
+          { key: 'too_high', label: 'Trop haute' },
+          { key: 'correct',  label: 'Correcte' },
+          { key: 'too_low',  label: 'Trop basse' },
+        ] as { key: Opinion; label: string }[]).map(({ key, label }) => (
+          <button
+            key={key}
+            type="button"
+            disabled={loading}
+            onClick={() => submitFeedback(key)}
+            className="px-3 py-1.5 rounded-full text-xs font-medium border transition-colors disabled:opacity-50"
+            style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 const IMPACT_COLOR = {
@@ -24,7 +83,7 @@ const IMPACT_ICON = {
   negative: '−',
 }
 
-export function EstStep4Result({ result, form, onRestart, onPublish }: Props) {
+export function EstStep4Result({ result, form, estimationId, onRestart, onPublish }: Props) {
   const isLocation = form.transactionType === 'location'
 
   return (
@@ -80,6 +139,13 @@ export function EstStep4Result({ result, form, onRestart, onPublish }: Props) {
           ))}
         </div>
       </div>
+
+      {/* Feedback */}
+      {estimationId && (
+        <div className="rounded-2xl px-4 py-3 border" style={{ borderColor: 'var(--color-border)' }}>
+          <EstimationFeedback estimationId={estimationId} />
+        </div>
+      )}
 
       {/* CTAs */}
       <div className="space-y-2 pt-1">

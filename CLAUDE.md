@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**SAKAN · سكن** — Ethical, halal real estate platform for Tunisia. No credit, direct sales, full transparency. Stack: Next.js 16 (App Router) · Tailwind CSS v4 · TypeScript · React 19. Backend (separate repo): Laravel + PostgreSQL/PostGIS + Meilisearch.
+**SAKAN · سكن** — Ethical, halal real estate platform for Tunisia. No credit, direct sales, full transparency. Stack: Next.js 16 (App Router) · Tailwind CSS v4 · TypeScript · React 19. Backend (separate repo): Laravel + MySQL
 
 ## Commands
 
@@ -94,7 +94,7 @@ Available namespaces:
 | ----------------- | ---------------------------------------------------------------------------------------------- |
 | `authApi`       | `register`, `login`, `logout`, `me`, `googleRedirect`                                |
 | `propertiesApi` | `list(filters)`, `get(id)`, `create`, `update`, `delete`, `myList`, `myContacts` |
-| `uploadApi`     | `presign(filename, contentType)` — returns S3/R2 pre-signed URL                             |
+| `uploadApi`     | `image(file)` — direct server-side upload to `POST /api/upload/image`; presign is a FEAT-PLAN spec, not implemented |
 | `adminApi`      | `properties`, `updateProperty`, `deleteProperty`, `users`, `updateUser`              |
 
 ## Dual Property Types
@@ -156,8 +156,7 @@ Phase 1 order:
 ## Key Implementation Notes
 
 - **i18n**: Plan for FR/AR from the start using `next-intl` or `i18next`. Arabic UI is Phase 2 but the structure must be ready.
-- **Images**: Upload to S3/Cloudflare R2, store URLs in DB — no local storage. `next.config.ts` whitelists `images.unsplash.com` and `cdn.sakan.tn` for remote images.
-- **Mosque proximity filter**: PostGIS `ST_DWithin` with configurable radius (300m / 500m / 1km).
+- **Images**: Upload to backend server, store URLs in DB — no local storage. `next.config.ts` whitelists `images.unsplash.com` and `cdn.sakan.tn` for remote images.
 - **SEO**: Dynamic metadata (`generateMetadata`) on every property page (title, description, OG image).
 - **Map**: Leaflet (OpenStreetMap tiles) for split map/list view. Property detail embed TBD.
 - **`/impeccable` skill**: Available for UI work — provides design guidelines and references. Run `/impeccable teach` first to set up project design context if `.impeccable.md` does not exist.

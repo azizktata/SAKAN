@@ -83,8 +83,10 @@ export function PublishDialog() {
   const [amenities, setAmenities]   = useState<Amenity[]>([])
   const estPrefillRef = useRef<{
     isFurnished: boolean; hasParking: boolean; hasElevator: boolean
-    hasGarden: boolean; hasPool: boolean
+    hasGarden: boolean; hasPool: boolean; hasTerrace: boolean
+    hasBalcony: boolean; hasSecurity: boolean; hasAirConditioning: boolean; hasHeating: boolean
   } | null>(null)
+  const prefillCitySlugRef = useRef<string | null>(null)
 
   // Load reference data when dialog opens
   useEffect(() => {
@@ -104,6 +106,8 @@ export function PublishDialog() {
       const est = JSON.parse(raw) as {
         transactionType: 'vente' | 'location'
         propertyType: string
+        citySlug?: string
+        governorate?: string
         address?: string
         surface: number
         bedrooms: number
@@ -114,6 +118,11 @@ export function PublishDialog() {
         hasElevator: boolean
         hasGarden: boolean
         hasPool: boolean
+        hasTerrace?: boolean
+        hasBalcony?: boolean
+        hasSecurity?: boolean
+        hasAirConditioning?: boolean
+        hasHeating?: boolean
         estimatedPrice?: number
       }
       form.setValue('transactionType', est.transactionType === 'vente' ? 'sale' : 'rent')
@@ -124,14 +133,26 @@ export function PublishDialog() {
       form.setValue('floor', est.floor)
       form.setValue('isFurnished', est.isFurnished)
       if (est.estimatedPrice) form.setValue('price', est.estimatedPrice)
-      if (est.address) form.setValue('address', est.address)
-      // Store amenity flags — will be matched by name once amenities API resolves
+      // Set address to governorate as a sensible default so validation passes
+      if (est.address) {
+        form.setValue('address', est.address)
+      } else if (est.governorate) {
+        form.setValue('address', est.governorate)
+      }
+      // Store citySlug to be matched once locations API resolves
+      if (est.citySlug) prefillCitySlugRef.current = est.citySlug
+      // Store all amenity flags — will be matched by name once amenities API resolves
       estPrefillRef.current = {
-        isFurnished: est.isFurnished,
-        hasParking:  est.hasParking,
-        hasElevator: est.hasElevator,
-        hasGarden:   est.hasGarden,
-        hasPool:     est.hasPool,
+        isFurnished:        est.isFurnished,
+        hasParking:         est.hasParking,
+        hasElevator:        est.hasElevator,
+        hasGarden:          est.hasGarden,
+        hasPool:            est.hasPool,
+        hasTerrace:         est.hasTerrace         ?? false,
+        hasBalcony:         est.hasBalcony          ?? false,
+        hasSecurity:        est.hasSecurity         ?? false,
+        hasAirConditioning: est.hasAirConditioning  ?? false,
+        hasHeating:         est.hasHeating          ?? false,
       }
       sessionStorage.removeItem('sakan_est_prefill')
       // Skip to step 3 (details) — type + location are pre-filled from estimation
@@ -141,17 +162,35 @@ export function PublishDialog() {
     }
   }, [open, user]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Match prefill citySlug to a locationId once locations are loaded
+  useEffect(() => {
+    if (!locations.length || !prefillCitySlugRef.current) return
+    const slug = prefillCitySlugRef.current
+    prefillCitySlugRef.current = null
+    // Match by slug (exact), then fall back to name normalization
+    const match = locations.find((loc) =>
+      loc.slug === slug ||
+      loc.name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, '-') === slug
+    )
+    if (match) form.setValue('locationId', String(match.id))
+  }, [locations]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Map estimation amenity flags to API amenity IDs once amenities are loaded
   useEffect(() => {
     if (!amenities.length || !estPrefillRef.current) return
     const flags = estPrefillRef.current
     estPrefillRef.current = null
     const AMENITY_MAP: { flag: keyof typeof flags; names: string[] }[] = [
-      { flag: 'isFurnished', names: ['meublé', 'meuble'] },
-      { flag: 'hasParking',  names: ['parking', 'garage'] },
-      { flag: 'hasElevator', names: ['ascenseur'] },
-      { flag: 'hasGarden',   names: ['jardin'] },
-      { flag: 'hasPool',     names: ['piscine'] },
+      { flag: 'isFurnished',        names: ['meublé', 'meuble'] },
+      { flag: 'hasParking',         names: ['parking', 'garage'] },
+      { flag: 'hasElevator',        names: ['ascenseur'] },
+      { flag: 'hasGarden',          names: ['jardin'] },
+      { flag: 'hasPool',            names: ['piscine'] },
+      { flag: 'hasTerrace',         names: ['terrasse'] },
+      { flag: 'hasBalcony',         names: ['balcon'] },
+      { flag: 'hasSecurity',        names: ['sécurité', 'securite', 'gardiennage'] },
+      { flag: 'hasAirConditioning', names: ['climatisation', 'clim'] },
+      { flag: 'hasHeating',         names: ['chauffage'] },
     ]
     const ids: string[] = []
     for (const { flag, names } of AMENITY_MAP) {
@@ -332,13 +371,19 @@ export function PublishDialog() {
       <div className="px-6 pt-6 pb-4 sticky top-0 z-10 rounded-t-3xl" style={{ background: 'var(--color-surface)' }}>
         {!showAuthGate && (
           <>
-            {/* Progress bar */}
+            {/* Progress bar — click any completed step to go back */}
             <div className="flex items-center gap-1.5 mb-4">
               {STEPS.map((_, i) => (
-                <div
+                <button
                   key={i}
+                  type="button"
+                  onClick={() => { if (i + 1 < step) setStep(i + 1) }}
                   className="h-1 rounded-full flex-1 transition-all duration-300"
-                  style={{ background: i < step ? 'var(--color-primary)' : 'var(--color-border)' }}
+                  style={{
+                    background: i < step ? 'var(--color-primary)' : 'var(--color-border)',
+                    cursor: i + 1 < step ? 'pointer' : 'default',
+                  }}
+                  aria-label={i + 1 < step ? `Retour à l'étape ${i + 1}` : undefined}
                 />
               ))}
             </div>
@@ -416,8 +461,8 @@ export function PublishDialog() {
         )}
       </div>
 
-      {/* Footer nav — only when logged in, not loading, and not on last step */}
-      {!showAuthGate && !authLoading && !loadingEdit && step < 6 && (
+      {/* Footer nav — steps 1–5 show Précédent + Suivant; step 6 shows Précédent only (actions are in Step6Review) */}
+      {!showAuthGate && !authLoading && !loadingEdit && (
         <div className="sticky bottom-0 px-6 pb-6 pt-4 flex items-center justify-between gap-3"
           style={{ background: 'var(--color-surface)' }}>
           {step > 1 ? (
@@ -432,14 +477,16 @@ export function PublishDialog() {
           ) : (
             <div />
           )}
-          <button
-            type="button"
-            onClick={goNext}
-            className="px-6 py-3 rounded-2xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
-            style={{ background: 'var(--color-primary)' }}
-          >
-            Suivant
-          </button>
+          {step < TOTAL && (
+            <button
+              type="button"
+              onClick={goNext}
+              className="px-6 py-3 rounded-2xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+              style={{ background: 'var(--color-primary)' }}
+            >
+              Suivant
+            </button>
+          )}
         </div>
       )}
     </Dialog>

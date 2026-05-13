@@ -2,9 +2,12 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { useState, useCallback } from 'react'
-import type { Property } from '@/lib/api'
-import { propertiesApi } from '@/lib/api'
+import { useState, useCallback, useEffect, useRef } from 'react'
+import { useSearchParams } from 'next/navigation'
+import type { Property, ViewSource } from '@/lib/api'
+import { propertiesApi, analyticsApi, sessionApi } from '@/lib/api'
+import { getVisitorKey, setVisitorKey } from '@/lib/visitor'
+import { getSessionToken, setSessionToken } from '@/lib/session'
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 
@@ -328,6 +331,68 @@ function SimilarCard({ prop }: { prop: Property }) {
 
 export function PropertyDetailClient({ prop, similar }: { prop: Property; similar: Property[] }) {
   const [contactOpen, setContactOpen] = useState(false)
+  const searchParams = useSearchParams()
+  const trackedRef   = useRef(false)
+  const viewIdRef    = useRef<string | undefined>(undefined)
+  const mountTimeRef = useRef<number>(Date.now())
+
+  useEffect(() => {
+    if (trackedRef.current) return
+    trackedRef.current = true
+
+    const source: ViewSource = searchParams.get('ref') === 'listing'
+      ? 'listing'
+      : searchParams.get('ref') === 'map'
+      ? 'map'
+      : 'direct'
+
+    analyticsApi.trackView({
+      property_id: prop.id,
+      visitor_key: getVisitorKey(),
+      source,
+    }).then(res => {
+      if (res.data.visitor_key) setVisitorKey(res.data.visitor_key)
+      if (res.data.view_id) viewIdRef.current = res.data.view_id
+
+      // Start session now if SessionProvider couldn't (no cookie existed at root layout mount)
+      if (!getSessionToken() && res.data.visitor_key) {
+        const ua = navigator.userAgent
+        const device: 'mobile' | 'desktop' | 'tablet' | 'unknown' =
+          /tablet|ipad/i.test(ua) ? 'tablet' :
+          /mobile|iphone|android/i.test(ua) ? 'mobile' :
+          /windows|mac|linux/i.test(ua) ? 'desktop' : 'unknown'
+        sessionApi.start({
+          visitor_key: res.data.visitor_key,
+          entry_page: window.location.pathname,
+          device,
+        }).then(s => { if (s.data.session_token) setSessionToken(s.data.session_token) })
+          .catch(() => {})
+      }
+    }).catch(() => {/* silent — tracking must never break the page */})
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prop.id])
+
+  useEffect(() => {
+    const sendDuration = () => {
+      const viewId = viewIdRef.current
+      if (!viewId) return
+      const elapsed = Math.round((Date.now() - mountTimeRef.current) / 1000)
+      if (elapsed < 2) return // ignore accidental instant leaves
+      analyticsApi.updateDuration(viewId, elapsed).catch(() => {})
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') sendDuration()
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('beforeunload', sendDuration)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('beforeunload', sendDuration)
+    }
+  }, []) // no deps — refs are stable
 
   const images      = prop.images?.map((i) => i.url) ?? []
   const location    = prop.location?.name ?? prop.address ?? ''
