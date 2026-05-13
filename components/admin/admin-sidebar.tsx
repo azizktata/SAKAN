@@ -7,6 +7,7 @@ const NAV = [
   { label: 'Tableau de bord', href: '/admin' },
   { label: 'Annonces',        href: '/admin/annonces' },
   { label: 'Utilisateurs',    href: '/admin/utilisateurs' },
+  { label: 'Analytics',       href: '/admin/analytics' },
 ]
 
 export function AdminSidebar() {

@@ -113,6 +113,7 @@ export function EspaceClientSidebar() {
   const { user, logout } = useAuth()
   const userName  = user?.name  ?? null
   const userImage = user?.image ?? null
+  const roleLabel = user?.role === 'admin' ? 'Administrateur' : user?.role === 'agent' ? 'Agent' : 'Propriétaire'
 
   function isActive(href: string) {
     if (href === '/espace-client') return pathname === '/espace-client'
@@ -148,7 +149,7 @@ export function EspaceClientSidebar() {
           <p className="text-sm font-semibold truncate" style={{ color: 'var(--color-text)' }}>
             {userName ?? 'Mon compte'}
           </p>
-          <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Propriétaire</p>
+          <p className="text-xs" style={{ color: 'var(--color-muted)' }}>{roleLabel}</p>
         </div>
       </div>
 

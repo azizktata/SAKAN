@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { analyticsApi, type OwnerSummary, type PropertyStats } from '@/lib/api'
+import { analyticsApi, type OwnerSummary, type PropertyStats, type DailyTrend } from '@/lib/api'
 import { propertiesApi } from '@/lib/api'
 import type { ManagedProperty } from '@/components/espace-client/property-card-manage'
 
@@ -32,11 +32,24 @@ function SortIcon({ active, asc }: { active: boolean; asc: boolean }) {
 }
 
 export default function AnalyticsPage() {
-  const [summary, setSummary]   = useState<OwnerSummary | null>(null)
-  const [rows, setRows]         = useState<Row[]>([])
-  const [loading, setLoading]   = useState(true)
-  const [sortKey, setSortKey]   = useState<SortKey>('views')
-  const [sortAsc, setSortAsc]   = useState(false)
+  const [summary, setSummary]         = useState<OwnerSummary | null>(null)
+  const [rows, setRows]               = useState<Row[]>([])
+  const [loading, setLoading]         = useState(true)
+  const [sortKey, setSortKey]         = useState<SortKey>('views')
+  const [sortAsc, setSortAsc]         = useState(false)
+  const [selectedRow, setSelectedRow] = useState<Row | null>(null)
+  const [trend, setTrend]             = useState<DailyTrend[]>([])
+  const [trendLoading, setTrendLoading] = useState(false)
+
+  function openDrawer(row: Row) {
+    setSelectedRow(row)
+    setTrend([])
+    setTrendLoading(true)
+    analyticsApi.propertyTrend(row.id, 7)
+      .then(r => setTrend(r.data))
+      .catch(() => {})
+      .finally(() => setTrendLoading(false))
+  }
 
   useEffect(() => {
     Promise.all([
@@ -100,7 +113,7 @@ export default function AnalyticsPage() {
         <KpiCard label="Vues totales"     value={summary?.total_views ?? 0} />
         <KpiCard label="Vues uniques"     value={summary?.total_unique_views ?? 0} />
         <KpiCard label="Contacts reçus"   value={summary?.total_contacts ?? 0} />
-        <KpiCard label="Taux conversion"  value={`${(summary?.avg_conversion_rate ?? 0).toFixed(1)}%`}
+        <KpiCard label="Taux conversion"  value={`${Math.min(100, summary?.avg_conversion_rate ?? 0).toFixed(1)}%`}
           sub="contacts / vues uniques" />
         <KpiCard
           label="Temps moyen de visite"
@@ -171,7 +184,7 @@ export default function AnalyticsPage() {
             </thead>
             <tbody className="divide-y" style={{ borderColor: 'var(--color-border)' }}>
               {sorted.map((row) => (
-                <tr key={row.id} style={{
+                <tr key={row.id} onClick={() => openDrawer(row)} className="cursor-pointer hover:bg-opacity-50 transition-colors" style={{
                   background: row.id === topId ? 'oklch(42% 0.09 155 / 0.04)' : 'var(--color-surface)',
                 }}>
                   <td className="px-4 py-3">
@@ -197,12 +210,80 @@ export default function AnalyticsPage() {
                     {row.stats.total_contacts}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums hidden sm:table-cell" style={{ color: 'var(--color-text)' }}>
-                    {row.stats.conversion_rate.toFixed(1)}%
+                    {Math.min(100, row.stats.conversion_rate).toFixed(1)}%
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Stats drawer */}
+      {selectedRow && (
+        <div className="fixed inset-0 z-50 flex justify-end" onClick={() => setSelectedRow(null)}>
+          <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.25)' }} />
+          <div className="relative w-full max-w-sm h-full shadow-2xl overflow-y-auto flex flex-col"
+            style={{ background: 'var(--color-surface)' }}
+            onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex items-start justify-between px-6 py-5 border-b" style={{ borderColor: 'var(--color-border)' }}>
+              <div>
+                <p className="font-display font-semibold text-base leading-tight" style={{ color: 'var(--color-text)' }}>
+                  {selectedRow.title}
+                </p>
+                <p className="text-sm mt-0.5" style={{ color: 'var(--color-muted)' }}>{selectedRow.location}</p>
+              </div>
+              <button onClick={() => setSelectedRow(null)} className="ml-4 shrink-0 p-1 rounded-lg"
+                style={{ color: 'var(--color-muted)' }}>
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            {/* KPIs */}
+            <div className="grid grid-cols-3 gap-3 px-6 py-5">
+              {[
+                { label: 'Vues', value: selectedRow.stats.total_views },
+                { label: 'Contacts', value: selectedRow.stats.total_contacts },
+                { label: 'Conversion', value: `${Math.min(100, selectedRow.stats.conversion_rate).toFixed(1)}%` },
+              ].map(({ label, value }) => (
+                <div key={label} className="rounded-xl p-3 text-center" style={{ background: 'var(--color-bg)' }}>
+                  <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--color-muted)' }}>{label}</p>
+                  <p className="font-bold text-lg tabular-nums" style={{ color: 'var(--color-text)' }}>{value}</p>
+                </div>
+              ))}
+            </div>
+            {/* Trend */}
+            <div className="px-6 pb-6 flex-1">
+              <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--color-muted)' }}>
+                Vues — 7 derniers jours
+              </p>
+              {trendLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="w-6 h-6 rounded-full border-2 border-t-transparent animate-spin"
+                    style={{ borderColor: 'var(--color-primary)', borderTopColor: 'transparent' }} />
+                </div>
+              ) : trend.length === 0 ? (
+                <p className="text-sm py-4" style={{ color: 'var(--color-text-secondary)' }}>
+                  Aucune donnée de tendance — disponible après le premier cycle d&apos;agrégation.
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {trend.map(d => (
+                    <li key={d.date} className="flex items-center justify-between text-sm">
+                      <span style={{ color: 'var(--color-text-secondary)' }}>
+                        {new Date(d.date).toLocaleDateString('fr-TN', { weekday: 'short', day: 'numeric', month: 'short' })}
+                      </span>
+                      <span className="tabular-nums font-medium" style={{ color: 'var(--color-text)' }}>
+                        {d.views} vue{d.views !== 1 ? 's' : ''}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </main>

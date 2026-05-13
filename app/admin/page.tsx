@@ -27,18 +27,15 @@ export default function AdminPage() {
   const [loading, setLoading]             = useState(true)
 
   useEffect(() => {
-    const statsPromise = adminApi.stats()
-      .then((r) => setStats(r.data))
-      .catch(() => null)
-
     const propsPromise = adminApi.properties({ per_page: 5, sort: 'newest' })
       .then((r) => {
         setProperties(r.data.data)
-        statsPromise.then((s) => {
-          if (s === null) {
-            setStats((prev) => ({ ...prev, total_properties: r.data.total }))
-          }
-        })
+        setStats((prev) => ({
+          ...prev,
+          total_properties: r.data.total,
+          published: r.data.data.filter((p: Property) => p.status === 'published').length,
+          drafts:    r.data.data.filter((p: Property) => p.status === 'draft').length,
+        }))
       })
       .catch(() => {})
 
@@ -58,15 +55,15 @@ export default function AdminPage() {
       .then((r) => setTopCities(r.data))
       .catch(() => {})
 
-    Promise.all([statsPromise, propsPromise, usersPromise, analyticsPromise, topPropsPromise, topCitiesPromise])
+    Promise.all([propsPromise, usersPromise, analyticsPromise, topPropsPromise, topCitiesPromise])
       .finally(() => setLoading(false))
   }, [])
 
   const displayStats = {
-    published:  stats.published  || properties.filter((p) => p.status === 'published').length,
-    drafts:     stats.drafts     || properties.filter((p) => p.status === 'draft').length,
+    published:  stats.published,
+    drafts:     stats.drafts,
     total:      stats.total_properties,
-    users:      stats.total_users || totalUsers,
+    users:      totalUsers || stats.total_users,
   }
 
   return (
@@ -93,7 +90,7 @@ export default function AdminPage() {
           { label: 'Vues (30j)',      value: overview?.total_views       ?? '—' },
           { label: 'Contacts (30j)',  value: overview?.total_contacts    ?? '—' },
           { label: 'Nouveaux users',  value: overview?.new_users         ?? '—' },
-          { label: 'Taux conversion', value: overview ? `${overview.conversion_rate.toFixed(1)}%` : '—' },
+          { label: 'Taux conversion', value: overview ? `${Math.min(100, overview.conversion_rate).toFixed(1)}%` : '—' },
         ].map(({ label, value }) => (
           <div key={label} className="rounded-2xl p-4"
             style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>

@@ -40,10 +40,12 @@ NEXT_PUBLIC_API_URL=http://localhost:8000/api   # Laravel backend base URL
   /espace-client/annonces/               ✓ My listings
   /espace-client/contacts/               ✓ Received inquiries
   /espace-client/profil/                 ✓ Profile management
+  /espace-client/analytics/             ✓ Owner analytics dashboard (views, contacts, trend charts)
   /admin/layout.tsx                      ✓ Admin layout with sidebar (role: admin)
   /admin/page.tsx                        ✓ Admin overview
   /admin/annonces/                       ✓ All property listings
   /admin/utilisateurs/                   ✓ User management
+  /admin/analytics/                      ✓ Admin analytics (overview, top properties/cities, funnel, market insights, sessions, geo)
   /louer/page.tsx                        → Rental listings (separate from /logements)
 /components
   /layout/navbar.tsx                     ✓ Sticky navbar; `initialDark` prop for hero-overlay mode
@@ -90,12 +92,23 @@ Cookie-based BFF pattern — the Laravel backend sets an httpOnly `sakan_token` 
 
 Available namespaces:
 
-| Namespace         | Key methods                                                                                    |
-| ----------------- | ---------------------------------------------------------------------------------------------- |
-| `authApi`       | `register`, `login`, `logout`, `me`, `googleRedirect`                                |
-| `propertiesApi` | `list(filters)`, `get(id)`, `create`, `update`, `delete`, `myList`, `myContacts` |
-| `uploadApi`     | `image(file)` — direct server-side upload to `POST /api/upload/image`; presign is a FEAT-PLAN spec, not implemented |
-| `adminApi`      | `properties`, `updateProperty`, `deleteProperty`, `users`, `updateUser`              |
+| Namespace            | Key methods                                                                                                    |
+| -------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `authApi`          | `register`, `login`, `logout`, `me`, `googleRedirect`                                                |
+| `propertiesApi`    | `list(filters)`, `get(id)`, `create`, `update`, `delete`, `myList`, `myContacts`, `contact` |
+| `userApi`          | `update(data)` — PATCH /user/me                                                                       |
+| `referenceApi`     | `locations()`, `amenities()`                                                                          |
+| `uploadApi`        | `image(file)` — direct server-side upload to `POST /api/upload/image`; presign is a FEAT-PLAN spec, not implemented |
+| `estimationApi`    | `estimate(payload)`, `feedback(estimationId, opinion)`                                                |
+| `analyticsApi`     | `trackView`, `propertyStats(id)`, `propertyTrend(id, days)`, `ownerSummary()`, `trackSearch`, `updateDuration` |
+| `sessionApi`       | `start(payload)`, `ping(token)`, `end(token)` — session lifecycle                                    |
+| `adminAnalyticsApi`| `overview`, `topProperties`, `topCities`, `funnel`, `estimationDataset`, `marketInsights`, `searchTrends`, `sessionStats`, `geoBreakdown` |
+| `adminApi`         | `properties`, `updateProperty`, `deleteProperty`, `users`, `updateUser`, `deleteUser`, `createUser`, `stats` |
+
+Client-side utilities (not in api.ts):
+- `lib/visitor.ts` — `getVisitorKey()` / `setVisitorKey()` — reads/writes `visitor_key` cookie (1yr TTL) for anonymous tracking
+- `lib/session.ts` — `getSessionToken()` / `setSessionToken()` / `clearSessionToken()` — sessionStorage wrapper for session lifecycle
+- `lib/estimation-engine.ts` — local heuristic fallback for price estimation; used when ML service is unreachable (`fallback: true`)
 
 ## Dual Property Types
 
