@@ -60,6 +60,8 @@ export type PropertyFilters = {
   location_id?: string
   min_price?: number
   max_price?: number
+  min_surface?: number
+  max_surface?: number
   bedrooms?: number
   amenities?: string   // comma-separated amenity IDs
   page?: number

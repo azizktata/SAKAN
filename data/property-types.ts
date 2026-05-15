@@ -1,4 +1,4 @@
-export const TYPES = ['Tous', 'Appartement', 'Villa', 'Maison'] as const
+export const TYPES = ['Tous', 'Appartement', 'Villa', 'Maison', 'Terrain', 'Commercial', 'Bureau'] as const
 
 export type PropertyType = (typeof TYPES)[number]
 

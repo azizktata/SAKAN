@@ -4,6 +4,8 @@ import { useRef, useEffect } from 'react'
 import type { Map, Marker } from 'leaflet'
 import type { Property } from '@/lib/api'
 import 'leaflet/dist/leaflet.css'
+import 'leaflet.markercluster/dist/MarkerCluster.css'
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 
 type MarkerEntry = { id: string; el: HTMLDivElement; marker: Marker }
 
@@ -33,9 +35,18 @@ function tooltipHtml(prop: Property) {
 }
 
 export function MapView({ properties, hoveredId, onHover, onSelect }: Props) {
-  const mapRef       = useRef<Map | null>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const markersRef   = useRef<MarkerEntry[]>([])
+  const mapRef        = useRef<Map | null>(null)
+  const containerRef  = useRef<HTMLDivElement>(null)
+  const markersRef    = useRef<MarkerEntry[]>([])
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const clusterRef    = useRef<any>(null)
+  const propIdsRef    = useRef<string>('')
+  const onHoverRef    = useRef(onHover)
+  const onSelectRef   = useRef(onSelect)
+
+  // Keep callback refs current without triggering re-renders
+  useEffect(() => { onHoverRef.current = onHover }, [onHover])
+  useEffect(() => { onSelectRef.current = onSelect }, [onSelect])
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
@@ -56,19 +67,52 @@ export function MapView({ properties, hoveredId, onHover, onSelect }: Props) {
     return () => {
       mapRef.current?.remove()
       mapRef.current = null
+      clusterRef.current = null
+      propIdsRef.current = ''
     }
   }, [])
 
   useEffect(() => {
     if (!mapRef.current) return
+
+    // Skip rebuild if same set of properties (by id) — preserves spiderfy/zoom state
+    const nextIds = properties.map((p) => p.id).join(',')
+    if (nextIds === propIdsRef.current) return
+    propIdsRef.current = nextIds
+
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const L = require('leaflet') as typeof import('leaflet')
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    require('leaflet.markercluster')
 
-    markersRef.current.forEach(({ marker }) => marker.remove())
+    // Remove old cluster group
+    if (clusterRef.current) {
+      mapRef.current.removeLayer(clusterRef.current)
+    }
     markersRef.current = []
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cluster = (L as any).markerClusterGroup({
+      showCoverageOnHover: false,
+      maxClusterRadius: 48,
+      spiderfyOnMaxZoom: true,
+      spiderfyDistanceMultiplier: 2,
+      iconCreateFunction: (c: any) => {
+        const count = c.getChildCount()
+        return L.divIcon({
+          html: `<div class="map-cluster">${count}</div>`,
+          className: '',
+          iconSize: [38, 38],
+          iconAnchor: [19, 19],
+        })
+      },
+    })
 
     properties.forEach((prop) => {
       if (!prop.latitude || !prop.longitude) return
+
+      const lat = Number(prop.latitude)
+      const lng = Number(prop.longitude)
 
       const el = document.createElement('div')
       el.className = 'map-marker'
@@ -76,12 +120,12 @@ export function MapView({ properties, hoveredId, onHover, onSelect }: Props) {
         ? `${fmt(prop.price)} DT`
         : `${Math.round(prop.price / 1000)}k DT`
 
-      el.addEventListener('mouseenter', () => onHover(prop.id))
-      el.addEventListener('mouseleave', () => onHover(null))
-      el.addEventListener('click', () => onSelect(prop.id))
+      el.addEventListener('mouseenter', () => onHoverRef.current(prop.id))
+      el.addEventListener('mouseleave', () => onHoverRef.current(null))
+      el.addEventListener('click', () => onSelectRef.current(prop.id))
 
       const icon = L.divIcon({ html: el, className: '', iconSize: [0, 0], iconAnchor: [0, 0] })
-      const marker = L.marker([prop.latitude!, prop.longitude!], { icon }).addTo(mapRef.current!)
+      const marker = L.marker([lat, lng] as [number, number], { icon })
 
       marker.bindTooltip(tooltipHtml(prop), {
         direction: 'top',
@@ -90,9 +134,13 @@ export function MapView({ properties, hoveredId, onHover, onSelect }: Props) {
         sticky: false,
       })
 
+      cluster.addLayer(marker)
       markersRef.current.push({ id: prop.id, el, marker })
     })
-  }, [properties, onHover, onSelect])
+
+    cluster.addTo(mapRef.current)
+    clusterRef.current = cluster
+  }, [properties])
 
   useEffect(() => {
     markersRef.current.forEach(({ id, el }) => {

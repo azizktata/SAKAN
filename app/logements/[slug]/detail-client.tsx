@@ -399,6 +399,13 @@ export function PropertyDetailClient({ prop, similar }: { prop: Property; simila
   const typeLabel   = PROPERTY_TYPE_LABELS[prop.property_type] ?? prop.property_type
   const priceLabel  = prop.transaction_type === 'rent' ? 'DT / mois' : 'DT'
 
+  // Extract phone from owner profile or description
+  const ownerPhone  = prop.user?.phone ?? null
+  const descPhone   = prop.description
+    ? (prop.description.match(/(?:\+216\s?)?(?:2|5|9)\d[\s.]?\d{3}[\s.]?\d{3}/)?.[0]?.replace(/\s|\./g, '') ?? null)
+    : null
+  const contactPhone = ownerPhone ?? descPhone
+
   return (
     <>
       <main className="pt-16 pb-28 lg:pb-10" style={{ background: 'var(--color-bg)' }}>
@@ -528,18 +535,37 @@ export function PropertyDetailClient({ prop, similar }: { prop: Property; simila
                   <IconMessage /> Contacter le propriétaire
                 </button>
                 <div className="grid grid-cols-2 gap-2.5">
-                  <button
-                    onClick={() => setContactOpen(true)}
-                    className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold border transition-colors"
-                    style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)' }}>
-                    <IconPhone /> Appeler
-                  </button>
-                  <button
-                    onClick={() => setContactOpen(true)}
-                    className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold"
-                    style={{ background: '#25D366', color: '#fff' }}>
-                    <IconWhatsApp /> WhatsApp
-                  </button>
+                  {contactPhone ? (
+                    <a
+                      href={`tel:${contactPhone}`}
+                      className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold border transition-colors"
+                      style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)' }}>
+                      <IconPhone /> Appeler
+                    </a>
+                  ) : (
+                    <button
+                      onClick={() => setContactOpen(true)}
+                      className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold border transition-colors"
+                      style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)' }}>
+                      <IconPhone /> Appeler
+                    </button>
+                  )}
+                  {contactPhone ? (
+                    <a
+                      href={`https://wa.me/${contactPhone.replace(/^\+/, '')}`}
+                      target="_blank" rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold"
+                      style={{ background: '#25D366', color: '#fff' }}>
+                      <IconWhatsApp /> WhatsApp
+                    </a>
+                  ) : (
+                    <button
+                      onClick={() => setContactOpen(true)}
+                      className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold"
+                      style={{ background: '#25D366', color: '#fff' }}>
+                      <IconWhatsApp /> WhatsApp
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Navbar } from '@/components/layout/navbar'
 import { propertiesApi, referenceApi, analyticsApi, type Property, type Location, type Amenity } from '@/lib/api'
@@ -18,10 +18,13 @@ const MapView = dynamic(
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const TYPE_API: Record<string, string | undefined> = {
-  'Tous': undefined,
-  'Appartement': 'apartment',
-  'Villa': 'villa',
-  'Maison': 'house',
+  'Tous':       undefined,
+  'Appartement':'apartment',
+  'Villa':      'villa',
+  'Maison':     'house',
+  'Terrain':    'land',
+  'Commercial': 'commercial',
+  'Bureau':     'office',
 }
 
 const PROPERTY_TYPE_LABELS: Record<string, string> = {
@@ -92,6 +95,175 @@ function IconChevronRight() {
   )
 }
 
+// ── Location Combobox ─────────────────────────────────────────────────────────
+
+function IconChevronDown() {
+  return (
+    <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+    </svg>
+  )
+}
+
+function IconSearch() {
+  return (
+    <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 104.5 4.5a7.5 7.5 0 0012.15 12.15z" />
+    </svg>
+  )
+}
+
+function IconXSmall() {
+  return (
+    <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  )
+}
+
+interface LocationComboboxProps {
+  locations: Location[]
+  value: string        // location id string, or ''
+  onChange: (id: string) => void
+  placeholder?: string
+  className?: string
+  fullWidth?: boolean
+}
+
+function LocationCombobox({ locations, value, onChange, placeholder = 'Toutes les villes', className = '', fullWidth = false }: LocationComboboxProps) {
+  const [open, setOpen]     = useState(false)
+  const [query, setQuery]   = useState('')
+  const containerRef        = useRef<HTMLDivElement>(null)
+  const inputRef            = useRef<HTMLInputElement>(null)
+
+  const selected = locations.find((l) => String(l.id) === value)
+
+  const filtered = query.trim()
+    ? locations.filter((l) => l.name.toLowerCase().includes(query.toLowerCase()))
+    : locations
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return
+    function handler(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false)
+        setQuery('')
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  // Focus input when dropdown opens
+  useEffect(() => {
+    if (open) setTimeout(() => inputRef.current?.focus(), 10)
+  }, [open])
+
+  function select(id: string) {
+    onChange(id)
+    setOpen(false)
+    setQuery('')
+  }
+
+  function clear(e: React.MouseEvent) {
+    e.stopPropagation()
+    onChange('')
+    setQuery('')
+  }
+
+  const active = Boolean(value)
+
+  return (
+    <div ref={containerRef} className={`relative ${fullWidth ? 'w-full' : ''} ${className}`}>
+      {/* Trigger */}
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className={`flex items-center gap-2 ${fullWidth ? 'w-full' : 'w-44'} rounded-xl border px-3 py-1.5 text-sm focus:outline-none focus:ring-2 transition-colors`}
+        style={{
+          borderColor: active ? 'var(--color-primary)' : 'var(--color-border)',
+          color:       active ? 'var(--color-text)'    : 'var(--color-muted)',
+          background:  'var(--color-bg)',
+        }}
+      >
+        <span className="flex-1 text-left truncate">{selected?.name ?? placeholder}</span>
+        {active ? (
+          <span onClick={clear} className="hover:opacity-70 transition-opacity" style={{ color: 'var(--color-muted)' }}>
+            <IconXSmall />
+          </span>
+        ) : (
+          <span style={{ color: 'var(--color-muted)' }}><IconChevronDown /></span>
+        )}
+      </button>
+
+      {/* Dropdown */}
+      {open && (
+        <div
+          className="absolute z-[1100] mt-1 rounded-xl shadow-lg border overflow-hidden"
+          style={{
+            background:   'var(--color-surface)',
+            borderColor:  'var(--color-border)',
+            width:        fullWidth ? '100%' : '220px',
+            top: '100%',
+            left: 0,
+          }}
+        >
+          {/* Search input */}
+          <div className="flex items-center gap-2 px-3 py-2 border-b" style={{ borderColor: 'var(--color-border)' }}>
+            <span style={{ color: 'var(--color-muted)' }}><IconSearch /></span>
+            <input
+              ref={inputRef}
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Rechercher une ville…"
+              className="flex-1 text-sm bg-transparent focus:outline-none"
+              style={{ color: 'var(--color-text)' }}
+            />
+            {query && (
+              <button onClick={() => setQuery('')} style={{ color: 'var(--color-muted)' }} className="hover:opacity-70">
+                <IconXSmall />
+              </button>
+            )}
+          </div>
+
+          {/* Options list */}
+          <div className="overflow-y-auto" style={{ maxHeight: '240px' }}>
+            <button
+              type="button"
+              onClick={() => select('')}
+              className="w-full text-left px-3 py-2 text-sm hover:bg-[var(--color-bg)] transition-colors"
+              style={{ color: !value ? 'var(--color-primary)' : 'var(--color-text-secondary)', fontWeight: !value ? 600 : 400 }}
+            >
+              Toutes les villes
+            </button>
+            {filtered.length === 0 && (
+              <p className="px-3 py-3 text-sm text-center" style={{ color: 'var(--color-muted)' }}>Aucun résultat</p>
+            )}
+            {filtered.map((l) => (
+              <button
+                key={l.id}
+                type="button"
+                onClick={() => select(String(l.id))}
+                className="w-full text-left px-3 py-2 text-sm hover:bg-[var(--color-bg)] transition-colors"
+                style={{
+                  color:      String(l.id) === value ? 'var(--color-primary)' : 'var(--color-text)',
+                  fontWeight: String(l.id) === value ? 600 : 400,
+                  background: String(l.id) === value ? 'oklch(42% 0.09 155 / 0.06)' : 'transparent',
+                }}
+              >
+                {l.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function ListingView() {
@@ -109,12 +281,16 @@ export function ListingView() {
   const [locationId,  setLocationId]  = useState(() => searchParams.get('locationId') ?? '')
   const [minPrice,    setMinPrice]    = useState(() => searchParams.get('minPrice') ?? '')
   const [maxPrice,    setMaxPrice]    = useState(() => searchParams.get('maxPrice') ?? '')
+  const [minSurface,  setMinSurface]  = useState(() => searchParams.get('minSurface') ?? '')
+  const [maxSurface,  setMaxSurface]  = useState(() => searchParams.get('maxSurface') ?? '')
   const [bedrooms,    setBedrooms]    = useState(() => Number(searchParams.get('bedrooms') ?? '0'))
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [page,        setPage]        = useState(1)
   const [hoveredId,   setHoveredId]   = useState<string | null>(null)
 
   const [properties,  setProperties]  = useState<Property[]>([])
+  const [mapProperties, setMapProperties] = useState<Property[]>([])
+  const [mapLoading,  setMapLoading]  = useState(true)
   const [total,       setTotal]       = useState(0)
   const [lastPage,    setLastPage]    = useState(1)
   const [loading,          setLoading]          = useState(true)
@@ -131,11 +307,15 @@ export function ListingView() {
     referenceApi.amenities().then((r) => setAllAmenities(r.data)).catch(() => {})
   }, [])
 
-  function handleSelectOnMap(id: string) {
+  const handleHoverOnMap = useCallback((id: string | null) => {
+    setHoveredId(id)
+  }, [])
+
+  const handleSelectOnMap = useCallback((id: string) => {
     setHoveredId(id)
     const card = document.getElementById(`map-card-${id}`)
     card?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-  }
+  }, [])
 
   // Sync filter state from URL changes
   useEffect(() => {
@@ -147,6 +327,8 @@ export function ListingView() {
     setView(searchParams.get('view') === 'map' ? 'map' : 'grid')
     setMinPrice(searchParams.get('minPrice') ?? '')
     setMaxPrice(searchParams.get('maxPrice') ?? '')
+    setMinSurface(searchParams.get('minSurface') ?? '')
+    setMaxSurface(searchParams.get('maxSurface') ?? '')
     setBedrooms(Number(searchParams.get('bedrooms') ?? '0'))
     setSelectedAmenities((searchParams.get('amenities') ?? '').split(',').filter(Boolean))
     setPage(1)
@@ -169,6 +351,8 @@ export function ListingView() {
         location_id:      locationId || undefined,
         min_price:        minPrice ? Number(minPrice) : undefined,
         max_price:        maxPrice ? Number(maxPrice) : undefined,
+        min_surface:      minSurface ? Number(minSurface) : undefined,
+        max_surface:      maxSurface ? Number(maxSurface) : undefined,
         bedrooms:         bedrooms > 0 ? bedrooms : undefined,
         amenities:        selectedAmenities.length > 0 ? selectedAmenities.join(',') : undefined,
         page,
@@ -203,7 +387,36 @@ export function ListingView() {
     }, 300)
 
     return () => { cancelled = true; clearTimeout(timer) }
-  }, [mode, type, locationId, minPrice, maxPrice, bedrooms, selectedAmenities, page])
+  }, [mode, type, locationId, minPrice, maxPrice, minSurface, maxSurface, bedrooms, selectedAmenities, page])
+
+  // Fetch ALL matching properties for map pins (no pagination)
+  useEffect(() => {
+    if (view !== 'map') return
+    let cancelled = false
+    setMapLoading(true)
+    const filters = {
+      transaction_type: mode === 'vente' ? 'sale' as const : mode === 'location' ? 'rent' as const : undefined,
+      property_type:    TYPE_API[type],
+      location_id:      locationId || undefined,
+      min_price:        minPrice ? Number(minPrice) : undefined,
+      max_price:        maxPrice ? Number(maxPrice) : undefined,
+      min_surface:      minSurface ? Number(minSurface) : undefined,
+      max_surface:      maxSurface ? Number(maxSurface) : undefined,
+      bedrooms:         bedrooms > 0 ? bedrooms : undefined,
+      amenities:        selectedAmenities.length > 0 ? selectedAmenities.join(',') : undefined,
+      per_page:         500,
+      page:             1,
+    }
+    propertiesApi.list(filters).then((res) => {
+      if (!cancelled) {
+        setMapProperties(res.data.data)
+        setMapLoading(false)
+      }
+    }).catch(() => {
+      if (!cancelled) setMapLoading(false)
+    })
+    return () => { cancelled = true }
+  }, [view, mode, type, locationId, minPrice, maxPrice, minSurface, maxSurface, bedrooms, selectedAmenities])
 
   function updateParams(patch: Record<string, string | null>) {
     const params = new URLSearchParams(searchParams.toString())
@@ -226,13 +439,15 @@ export function ListingView() {
     locationName    && locationName,
     minPrice        && `≥ ${fmt(Number(minPrice))} DT`,
     maxPrice        && `≤ ${fmt(Number(maxPrice))} DT`,
+    minSurface      && `≥ ${minSurface} m²`,
+    maxSurface      && `≤ ${maxSurface} m²`,
     bedrooms > 0    && `${bedrooms}+ ch.`,
     selectedAmenities.length > 0 && `${selectedAmenities.length} équipement${selectedAmenities.length > 1 ? 's' : ''}`,
   ].filter(Boolean) as string[]
 
   function resetAll() {
     setMode('tous'); setType('Tous'); setLocationId('')
-    setMinPrice(''); setMaxPrice(''); setBedrooms(0); setSelectedAmenities([]); setPage(1)
+    setMinPrice(''); setMaxPrice(''); setMinSurface(''); setMaxSurface(''); setBedrooms(0); setSelectedAmenities([]); setPage(1)
     router.replace('/logements', { scroll: false })
   }
 
@@ -246,7 +461,7 @@ const modeLabel = mode === 'location' ? 'à louer' : mode === 'vente' ? 'à vend
 
       {/* ── Filter bar ───────────────────────────────────────────────────── */}
       <div
-        className="sticky z-30"
+        className="sticky z-[800]"
         style={{ top: '64px', background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)' }}
       >
         <div className="max-w-7xl mx-auto px-6 py-3 flex flex-wrap items-center gap-2.5">
@@ -275,26 +490,18 @@ const modeLabel = mode === 'location' ? 'à louer' : mode === 'vente' ? 'à vend
                 color: type !== 'Tous' ? 'var(--color-text)' : 'var(--color-muted)',
                 background: 'var(--color-bg)',
               }}>
-              {TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+              <option value="Tous">Type de bien</option>
+              {TYPES.filter((t) => t !== 'Tous').map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
 
           {/* Location search — desktop */}
           <div className="hidden md:flex">
-            <select
+            <LocationCombobox
+              locations={locations}
               value={locationId}
-              onChange={(e) => { setLocationId(e.target.value); setPage(1); updateParams({ locationId: e.target.value }) }}
-              className="rounded-xl border pl-3 pr-3 py-1.5 text-sm w-44 focus:outline-none focus:ring-2"
-              style={{
-                borderColor: locationId ? 'var(--color-primary)' : 'var(--color-border)',
-                color: locationId ? 'var(--color-text)' : 'var(--color-muted)',
-                background: 'var(--color-bg)',
-              }}>
-              <option value="">Toutes les villes</option>
-              {locations.map((l) => (
-                <option key={l.id} value={String(l.id)}>{l.name}</option>
-              ))}
-            </select>
+              onChange={(id) => { setLocationId(id); setPage(1); updateParams({ locationId: id }) }}
+            />
           </div>
 
           {/* Budget — desktop */}
@@ -385,20 +592,12 @@ const modeLabel = mode === 'location' ? 'à louer' : mode === 'vente' ? 'à vend
 
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wider mb-2.5" style={{ color: 'var(--color-muted)' }}>Localisation</p>
-                  <select
+                  <LocationCombobox
+                    locations={locations}
                     value={locationId}
-                    onChange={(e) => { setLocationId(e.target.value); setPage(1); updateParams({ locationId: e.target.value }) }}
-                    className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2"
-                    style={{
-                      borderColor: locationId ? 'var(--color-primary)' : 'var(--color-border)',
-                      color: locationId ? 'var(--color-text)' : 'var(--color-muted)',
-                      background: 'var(--color-bg)',
-                    }}>
-                    <option value="">Toutes les villes</option>
-                    {locations.map((l) => (
-                      <option key={l.id} value={String(l.id)}>{l.name}</option>
-                    ))}
-                  </select>
+                    onChange={(id) => { setLocationId(id); setPage(1); updateParams({ locationId: id }) }}
+                    fullWidth
+                  />
                 </div>
 
                 <div>
@@ -421,6 +620,22 @@ const modeLabel = mode === 'location' ? 'à louer' : mode === 'vente' ? 'à vend
 
               {/* Advanced filters */}
               <div className="space-y-5">
+
+                {/* Surface */}
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider mb-2.5" style={{ color: 'var(--color-muted)' }}>Surface (m²)</p>
+                  <div className="flex items-center gap-2">
+                    <input type="number" placeholder="Min m²" value={minSurface}
+                      onChange={(e) => { setMinSurface(e.target.value); setPage(1); updateParams({ minSurface: e.target.value }) }}
+                      className="flex-1 rounded-xl border px-3 py-2 text-sm focus:outline-none"
+                      style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }} />
+                    <span className="text-xs shrink-0" style={{ color: 'var(--color-muted)' }}>—</span>
+                    <input type="number" placeholder="Max m²" value={maxSurface}
+                      onChange={(e) => { setMaxSurface(e.target.value); setPage(1); updateParams({ maxSurface: e.target.value }) }}
+                      className="flex-1 rounded-xl border px-3 py-2 text-sm focus:outline-none"
+                      style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }} />
+                  </div>
+                </div>
 
                 {/* Chambres */}
                 <div>
@@ -561,12 +776,12 @@ const modeLabel = mode === 'location' ? 'à louer' : mode === 'vente' ? 'à vend
           <div ref={listPanelRef} className="w-full lg:w-[380px] shrink-0 overflow-y-auto border-r"
             style={{ borderColor: 'var(--color-border)' }}>
             <div className="p-3 space-y-2.5">
-              {loading && properties.length === 0 ? (
+              {mapLoading ? (
                 <div className="flex justify-center py-16">
                   <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
                     style={{ borderColor: 'var(--color-primary)', borderTopColor: 'transparent' }} />
                 </div>
-              ) : properties.length === 0 ? (
+              ) : mapProperties.length === 0 ? (
                 <div className="py-16 text-center px-4">
                   <p className="font-display font-semibold mb-2" style={{ color: 'var(--color-text)' }}>
                     Aucun résultat
@@ -581,7 +796,7 @@ const modeLabel = mode === 'location' ? 'à louer' : mode === 'vente' ? 'à vend
                   </button>
                 </div>
               ) : (
-                properties.map((prop) => (
+                mapProperties.map((prop) => (
                   <div key={prop.id}
                     id={`map-card-${prop.id}`}
                     className="rounded-2xl overflow-hidden transition-all"
@@ -600,9 +815,9 @@ const modeLabel = mode === 'location' ? 'à louer' : mode === 'vente' ? 'à vend
           {/* Right: Leaflet map (desktop only) */}
           <div className="hidden lg:block flex-1">
             <MapView
-              properties={properties}
+              properties={mapProperties}
               hoveredId={hoveredId}
-              onHover={setHoveredId}
+              onHover={handleHoverOnMap}
               onSelect={handleSelectOnMap}
             />
           </div>

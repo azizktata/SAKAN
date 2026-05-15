@@ -340,7 +340,12 @@ interface NavbarProps {
 
 export function Navbar({ initialDark = false }: NavbarProps) {
   const [scrolled, setScrolled] = useState(!initialDark)
+  const [mounted, setMounted] = useState(false)
   const { user } = useAuth()
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     if (!initialDark) return
@@ -380,7 +385,7 @@ export function Navbar({ initialDark = false }: NavbarProps) {
           <span className="w-px h-4 rounded" aria-hidden="true"
             style={{ background: scrolled ? 'var(--color-border)' : 'rgba(255,255,255,0.2)' }} />
 
-          {user ? (
+          {mounted && user ? (
             <UserMenu user={user} scrolled={scrolled} />
           ) : (
             <>
