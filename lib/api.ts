@@ -41,6 +41,7 @@ export type Property = {
   updated_at: string
   images?: Array<{ id: string; url: string; position: number; is_cover: boolean }>
   amenities?: Array<{ id: string; name: string; slug: string }>
+  user?: { id: string; name: string; role: UserRole; avatar?: string | null; phone?: string | null }
 }
 
 export type Contact = {
