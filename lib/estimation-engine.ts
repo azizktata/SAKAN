@@ -1,44 +1,58 @@
-// Price tables: median DT/m² by city and property type (vente + location)
-// Calibrated against Mubawab listings (2024–2025 sample, ~30 vente / ~70 location)
+// Price tables: avg DT/m² by city — derived from properties_clean (877 rows, 2026-05-19)
+// Vente: apartment base = scraped avg; other types derived by ratio.
+// Location: DT/month/m²; apartment base = scraped avg.
+// Cities with n<3 in scraped data use nearest governorate avg or _default.
 
 export type TransactionType = 'vente' | 'location'
 export type PropertyType = 'apartment' | 'villa' | 'house' | 'land' | 'commercial' | 'office'
 export type Condition = 'neuf' | 'bon_etat' | 'a_renover'
 
-// DT/m² for sale — medians from market data where n≥2, estimates elsewhere
+// DT/m² for sale — apartment base from scraped avg; ratios: villa×1.35, house×0.90, land×0.45, commercial×1.10, office×1.00
 const SALE_PRICE_PER_M2: Record<string, Partial<Record<PropertyType, number>>> = {
-  tunis:      { apartment: 3200, villa: 4500, house: 2800, land: 2200, commercial: 3500, office: 3000 },
-  'la-marsa': { apartment: 5000, villa: 6500, house: 4200, land: 4000, commercial: 4800, office: 4200 },
-  ariana:     { apartment: 2900, villa: 4700, house: 2600, land: 1800, commercial: 3000, office: 2600 },
-  sousse:     { apartment: 3000, villa: 3800, house: 2400, land: 1500, commercial: 2800, office: 2400 },
-  sfax:       { apartment: 2000, villa: 2800, house: 1800, land: 1200, commercial: 2200, office: 1900 },
-  hammamet:   { apartment: 3500, villa: 4200, house: 2800, land: 2000, commercial: 3000, office: 2600 },
-  monastir:   { apartment: 2400, villa: 3200, house: 2100, land: 1400, commercial: 2600, office: 2200 },
-  nabeul:     { apartment: 2200, villa: 3000, house: 2000, land: 1300, commercial: 2400, office: 2000 },
-  kairouan:   { apartment: 2900, villa: 3500, house: 2200, land: 900,  commercial: 2400, office: 2000 },
-  bizerte:    { apartment: 2200, villa: 3000, house: 2000, land: 1000, commercial: 2200, office: 1900 },
-  'ben-arous':{ apartment: 2600, villa: 3500, house: 2300, land: 1600, commercial: 2800, office: 2400 },
-  djerba:     { apartment: 3000, villa: 4500, house: 2800, land: 2200, commercial: 3000, office: 2600 },
-  mahdia:     { apartment: 2000, villa: 2800, house: 1800, land: 1000, commercial: 2000, office: 1800 },
-  _default:   { apartment: 2200, villa: 3000, house: 1900, land: 1000, commercial: 2200, office: 1900 },
+  // n≥10 from scraped data — high confidence
+  hammamet:   { apartment: 3517, villa: 4750, house: 3165, land: 1580, commercial: 3870, office: 3517 },
+  'la-marsa': { apartment: 3265, villa: 4410, house: 2940, land: 1470, commercial: 3590, office: 3265 },
+  sousse:     { apartment: 2851, villa: 3850, house: 2566, land: 1280, commercial: 3136, office: 2851 },
+  mahdia:     { apartment: 2795, villa: 3773, house: 2516, land: 1258, commercial: 3075, office: 2795 },
+  tunis:      { apartment: 2651, villa: 3579, house: 2386, land: 1193, commercial: 2916, office: 2651 },
+  ariana:     { apartment: 2641, villa: 3565, house: 2377, land: 1188, commercial: 2905, office: 2641 },
+  nabeul:     { apartment: 2428, villa: 3278, house: 2185, land: 1093, commercial: 2671, office: 2428 },
+  medenine:   { apartment: 1885, villa: 2545, house: 1697, land:  848, commercial: 2074, office: 1885 },
+  manouba:    { apartment: 1882, villa: 2541, house: 1694, land:  847, commercial: 2070, office: 1882 },
+  'ben-arous':{ apartment: 1754, villa: 2368, house: 1579, land:  789, commercial: 1929, office: 1754 },
+  kairouan:   { apartment: 1723, villa: 2326, house: 1551, land:  775, commercial: 1895, office: 1723 },
+  sfax:       { apartment: 1508, villa: 2036, house: 1357, land:  679, commercial: 1659, office: 1508 },
+  bizerte:    { apartment: 1504, villa: 2030, house: 1354, land:  677, commercial: 1654, office: 1504 },
+  monastir:   { apartment: 1358, villa: 1833, house: 1222, land:  611, commercial: 1494, office: 1358 },
+  gabes:      { apartment: 1009, villa: 1362, house:  908, land:  454, commercial: 1110, office: 1009 },
+  // Derived from nearest city / regional avg (no vente data for these)
+  djerba:     { apartment: 2800, villa: 3780, house: 2520, land: 1260, commercial: 3080, office: 2800 },
+  // Default: weighted avg of all scraped cities
+  _default:   { apartment: 2100, villa: 2835, house: 1890, land:  945, commercial: 2310, office: 2100 },
 }
 
-// DT/month/m² for rental — La Marsa apartment calibrated from n=35 sample (median 21.7)
+// DT/month/m² for rental — apartment base from scraped avg; ratios: villa×1.35, house×0.85, land×0.25, commercial×1.20, office×1.10
 const RENT_PRICE_PER_M2: Record<string, Partial<Record<PropertyType, number>>> = {
-  tunis:      { apartment: 16, villa: 22, house: 14, land: 4,  commercial: 18, office: 16 },
-  'la-marsa': { apartment: 22, villa: 20, house: 17, land: 8,  commercial: 24, office: 22 },
-  ariana:     { apartment: 13, villa: 18, house: 11, land: 3,  commercial: 15, office: 13 },
-  sousse:     { apartment: 12, villa: 16, house: 10, land: 3,  commercial: 14, office: 12 },
-  sfax:       { apartment: 10, villa: 14, house:  9, land: 2,  commercial: 12, office: 10 },
-  hammamet:   { apartment: 14, villa: 20, house: 12, land: 4,  commercial: 15, office: 13 },
-  monastir:   { apartment: 11, villa: 15, house: 10, land: 3,  commercial: 13, office: 11 },
-  nabeul:     { apartment: 10, villa: 14, house:  9, land: 2,  commercial: 12, office: 10 },
-  kairouan:   { apartment:  8, villa: 11, house:  7, land: 2,  commercial: 10, office:  8 },
-  bizerte:    { apartment: 10, villa: 13, house:  9, land: 2,  commercial: 11, office:  9 },
-  'ben-arous':{ apartment: 12, villa: 16, house: 10, land: 2,  commercial: 13, office: 11 },
-  djerba:     { apartment: 14, villa: 22, house: 12, land: 3,  commercial: 14, office: 12 },
-  mahdia:     { apartment:  8, villa: 12, house:  7, land: 2,  commercial:  9, office:  8 },
-  _default:   { apartment:  9, villa: 13, house:  8, land: 2,  commercial: 11, office:  9 },
+  // n≥10 from scraped data — high confidence
+  'la-marsa': { apartment: 20, villa: 27, house: 17, land: 5, commercial: 24, office: 22 },
+  mahdia:     { apartment: 17, villa: 23, house: 14, land: 4, commercial: 20, office: 19 },
+  tunis:      { apartment: 17, villa: 23, house: 14, land: 4, commercial: 20, office: 19 },
+  nabeul:     { apartment: 15, villa: 20, house: 13, land: 4, commercial: 18, office: 17 },
+  ariana:     { apartment: 13, villa: 18, house: 11, land: 3, commercial: 16, office: 14 },
+  'ben-arous':{ apartment: 12, villa: 16, house: 10, land: 3, commercial: 14, office: 13 },
+  sousse:     { apartment: 12, villa: 16, house: 10, land: 3, commercial: 14, office: 13 },
+  bizerte:    { apartment: 10, villa: 14, house:  9, land: 3, commercial: 12, office: 11 },
+  sfax:       { apartment: 10, villa: 14, house:  9, land: 3, commercial: 12, office: 11 },
+  medenine:   { apartment:  9, villa: 12, house:  8, land: 2, commercial: 11, office: 10 },
+  monastir:   { apartment:  9, villa: 12, house:  8, land: 2, commercial: 11, office: 10 },
+  manouba:    { apartment:  9, villa: 12, house:  8, land: 2, commercial: 11, office: 10 },
+  kairouan:   { apartment:  8, villa: 11, house:  7, land: 2, commercial: 10, office:  9 },
+  gabes:      { apartment:  6, villa:  8, house:  5, land: 2, commercial:  7, office:  7 },
+  // Derived — no rental data but similar market to nearby city
+  hammamet:   { apartment: 14, villa: 19, house: 12, land: 4, commercial: 17, office: 15 },
+  djerba:     { apartment: 14, villa: 19, house: 12, land: 4, commercial: 17, office: 15 },
+  // Default: conservative floor across all scraped cities
+  _default:   { apartment:  9, villa: 12, house:  8, land: 2, commercial: 11, office: 10 },
 }
 
 // Multipliers
@@ -62,29 +76,6 @@ function roomsFactor(bedrooms: number, surface: number): number {
   if (ratio >= 18) return 1.04
   if (ratio >= 12) return 1.00
   return 0.96
-}
-
-export interface EstimationInput {
-  transactionType: TransactionType
-  propertyType: PropertyType
-  citySlug: string
-  address?: string
-  surface: number
-  bedrooms: number
-  bathrooms: number
-  floor: number
-  condition: Condition
-  isFurnished: boolean
-  hasParking: boolean
-  hasElevator: boolean
-  hasGarden: boolean
-  hasPool: boolean
-  // Extended inputs
-  parkingSpaces?:    number
-  gardenSurface?:    number   // m²
-  terraceSurface?:   number   // m²
-  hasTerrace?:       boolean
-  buildingYearRange?: string | null
 }
 
 export interface EstimationFactor {
@@ -129,24 +120,56 @@ function buildingAgeFactor(yearRange: string | null | undefined): number {
   return 1.0
 }
 
+export interface EstimationInput {
+  transactionType: TransactionType
+  propertyType: PropertyType
+  citySlug: string
+  address?: string
+  surface: number
+  bedrooms: number
+  bathrooms: number
+  floor: number
+  condition: Condition
+  isFurnished: boolean
+  hasParking: boolean
+  hasElevator: boolean
+  hasGarden: boolean
+  hasPool: boolean
+  zoneScore?: number         // 1–5, from locations API; adjusts base ±16%
+  // Extended inputs
+  parkingSpaces?:    number
+  gardenSurface?:    number   // m²
+  terraceSurface?:   number   // m²
+  hasTerrace?:       boolean
+  buildingYearRange?: string | null
+}
+
 export function estimate(input: EstimationInput): EstimationResult {
   const { transactionType, propertyType, citySlug, surface, bedrooms, floor,
           condition, isFurnished, hasParking, hasElevator, hasGarden, hasPool,
-          parkingSpaces, gardenSurface, terraceSurface, hasTerrace, buildingYearRange } = input
+          zoneScore, parkingSpaces, gardenSurface, terraceSurface, hasTerrace, buildingYearRange } = input
 
   const table = transactionType === 'vente' ? SALE_PRICE_PER_M2 : RENT_PRICE_PER_M2
   const cityRow = table[citySlug] ?? table['_default']
   const basePricePerM2 = cityRow[propertyType] ?? (table['_default'][propertyType] ?? 1500)
 
-  let multiplier = 1.0
+  // zone_score adjusts base price: score 3 = neutral, 1 = −16%, 5 = +16%
+  const zoneMultiplier = zoneScore != null ? 1 + (zoneScore - 3) * 0.08 : 1.0
+
+  let multiplier = zoneMultiplier
   const factors: EstimationFactor[] = []
 
-  // City
+  // City / zone
   const known = !!table[citySlug]
+  const zoneDetail = zoneScore != null && zoneScore !== 3
+    ? ` — zone ${zoneScore}/5 (${zoneScore > 3 ? '+' : ''}${Math.round((zoneMultiplier - 1) * 100)}%)`
+    : ''
   factors.push({
     label: 'Localisation',
-    impact: 'neutral',
-    detail: known ? `${citySlug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())} — marché de référence` : 'Ville non couverte, estimation approximative',
+    impact: zoneScore != null && zoneScore > 3 ? 'positive' : zoneScore != null && zoneScore < 3 ? 'negative' : 'neutral',
+    detail: known
+      ? `${citySlug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())} — données marché réelles${zoneDetail}`
+      : `Estimation approximative${zoneDetail}`,
   })
 
   // Surface

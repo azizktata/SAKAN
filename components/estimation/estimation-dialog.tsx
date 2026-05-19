@@ -86,6 +86,7 @@ export function EstimationDialog() {
   const [form, setForm]             = useState<EstFormData>(DEFAULT_FORM)
   const [result, setResult]         = useState<EstimationResult | null>(null)
   const [estimationId, setEstimationId] = useState<string | null>(null)
+  const [estimating, setEstimating] = useState(false)
 
   const close = useCallback(() => {
     const params = new URLSearchParams(searchParams.toString())
@@ -118,6 +119,7 @@ export function EstimationDialog() {
   }
 
   async function handleEstimate() {
+    setEstimating(true)
     const amenitiesCount = [
       form.hasParking, form.hasElevator, form.hasGarden, form.hasPool, form.isFurnished,
       form.hasTerrace, form.hasBalcony, form.hasSecurity, form.hasAirConditioning, form.hasHeating,
@@ -167,6 +169,7 @@ export function EstimationDialog() {
               : []),
           ],
         })
+        setEstimating(false)
         setStep(4)
         return
       }
@@ -177,6 +180,7 @@ export function EstimationDialog() {
     // Fallback: local heuristic engine
     const res = estimate(form)
     setResult(res)
+    setEstimating(false)
     setStep(4)
   }
 
@@ -289,10 +293,17 @@ export function EstimationDialog() {
             <button
               type="button"
               onClick={handleEstimate}
-              className="px-6 py-3 rounded-2xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+              disabled={estimating}
+              className="px-6 py-3 rounded-2xl text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-70 flex items-center gap-2"
               style={{ background: 'var(--color-primary)' }}
             >
-              Estimer maintenant
+              {estimating && (
+                <svg className="w-4 h-4 animate-spin shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                </svg>
+              )}
+              {estimating ? 'Estimation en cours…' : 'Estimer maintenant'}
             </button>
           ) : (
             <button
