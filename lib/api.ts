@@ -214,6 +214,8 @@ export type EstimatePayload = {
   transaction_type: 'vente' | 'location'
   surface:          number
   bedrooms?:        number
+  bathrooms?:       number
+  floor?:           number
   condition?:       string
   zone_score?:      number
   amenities_count?: number
@@ -224,6 +226,8 @@ export type EstimatePayload = {
   parking_spaces?:  number
   terrace_surface?: number
   building_age?:    number
+  latitude?:        number
+  longitude?:       number
 }
 
 export type EstimateResponse = {

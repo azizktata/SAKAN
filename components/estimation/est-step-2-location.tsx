@@ -80,7 +80,14 @@ export function EstStep2Location({ form, setForm }: Props) {
     const cityMatch = group.cities.find(c => c.slug === form.citySlug)
     if (!cityMatch) {
       const first = group.cities[0]
-      setForm({ ...form, governorate: group.name, citySlug: first.slug, zoneScore: first.zone_score })
+      setForm({
+        ...form,
+        governorate: group.name,
+        citySlug:    first.slug,
+        zoneScore:   first.zone_score,
+        latitude:    first.latitude  ?? null,
+        longitude:   first.longitude ?? null,
+      })
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groups])
@@ -105,6 +112,8 @@ export function EstStep2Location({ form, setForm }: Props) {
       governorate:  govName,
       citySlug:     first?.slug ?? '',
       zoneScore:    first?.zone_score ?? 1,
+      latitude:     first?.latitude  ?? null,
+      longitude:    first?.longitude ?? null,
       neighborhood: '',
     })
   }
@@ -116,6 +125,8 @@ export function EstStep2Location({ form, setForm }: Props) {
       ...form,
       citySlug:     city.slug,
       zoneScore:    city.zone_score,
+      latitude:     city.latitude  ?? null,
+      longitude:    city.longitude ?? null,
       neighborhood: '',
     })
   }

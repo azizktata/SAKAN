@@ -18,6 +18,8 @@ export type EstFormData = EstimationInput & {
   governorate:      string
   neighborhood:     string
   zoneScore:        number
+  latitude:         number | null
+  longitude:        number | null
   // Extended amenities (beyond the 5 in EstimationInput)
   hasTerrace:       boolean
   hasBalcony:       boolean
@@ -39,6 +41,8 @@ const DEFAULT_FORM: EstFormData = {
   governorate:     'Tunis',
   neighborhood:    '',
   zoneScore:       4,
+  latitude:        null,
+  longitude:       null,
   surface:         80,
   bedrooms:        2,
   bathrooms:       1,
@@ -137,6 +141,8 @@ export function EstimationDialog() {
         parking_spaces:   form.hasParking ? form.parkingSpaces : undefined,
         terrace_surface:  form.hasTerrace && form.terraceSurface > 0 ? form.terraceSurface : undefined,
         building_age:     buildingAge,
+        latitude:         form.latitude  ?? undefined,
+        longitude:        form.longitude ?? undefined,
       })
 
       if (apiResult.estimation_id) {
