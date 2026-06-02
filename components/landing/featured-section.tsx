@@ -78,9 +78,46 @@ export function FeaturedSection({ saleProperties, rentProperties }: FeaturedSect
         </div>
 
         {properties.length === 0 ? (
-          <p className="text-sm py-12 text-center" style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-sans)' }}>
-            Aucun bien disponible pour ce type.
-          </p>
+          /* Empty state — CTA to search */
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-px" style={{ background: 'var(--color-border)' }}>
+            <div className="md:col-span-2 flex flex-col justify-center items-start px-10 py-16"
+              style={{ background: 'var(--color-surface)' }}>
+              <p className="font-display font-bold mb-3 leading-tight"
+                style={{ fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', color: 'var(--color-text)', letterSpacing: '-0.02em' }}>
+                {mode === 'vente'
+                  ? 'Des centaines de biens à vendre vous attendent.'
+                  : 'Trouvez votre prochain logement en location.'}
+              </p>
+              <p className="mb-8 leading-relaxed"
+                style={{ fontSize: '0.9375rem', color: 'var(--color-text-secondary)', maxWidth: '44ch', fontFamily: 'var(--font-sans)' }}>
+                Utilisez nos filtres pour affiner par superficie, localisation, budget et type de bien.
+              </p>
+              <Link href={viewAllHref}
+                className="inline-flex items-center gap-2 px-7 py-3.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                style={{ background: 'var(--color-primary)', borderRadius: '3px', fontFamily: 'var(--font-sans)' }}>
+                Parcourir les annonces <IconArrow />
+              </Link>
+            </div>
+            <div className="flex flex-col gap-px" style={{ background: 'var(--color-border)' }}>
+              {[
+                { label: 'Appartements', href: `${viewAllHref}&property_type=apartment` },
+                { label: 'Villas',       href: `${viewAllHref}&property_type=villa`     },
+                { label: 'Maisons',      href: `${viewAllHref}&property_type=house`     },
+              ].map(({ label, href }) => (
+                <Link key={label} href={href}
+                  className="flex items-center justify-between flex-1 px-8 py-6 group transition-colors hover:bg-[oklch(32%_0.08_130_/_0.04)]"
+                  style={{ background: 'var(--color-surface)' }}>
+                  <span className="font-display font-bold"
+                    style={{ fontSize: '1.125rem', color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
+                    {label}
+                  </span>
+                  <span className="transition-opacity group-hover:opacity-60" style={{ color: 'var(--color-primary)' }}>
+                    <IconArrow />
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px"
             style={{ background: 'var(--color-border)' }}>

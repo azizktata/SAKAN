@@ -1,6 +1,5 @@
 'use client'
 
-import Image from 'next/image'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { useState, useEffect, useRef, useCallback } from 'react'
@@ -830,139 +829,153 @@ const modeLabel = mode === 'location' ? 'à louer' : mode === 'vente' ? 'à vend
 // ── Property card ─────────────────────────────────────────────────────────────
 
 function PropertyCard({ prop }: { prop: Property }) {
-  const images     = prop.images ?? []
+  const images       = prop.images ?? []
   const [imgIdx, setImgIdx] = useState(0)
-  const hasMultiple = images.length > 1
+  const intervalRef  = useRef<ReturnType<typeof setInterval> | null>(null)
+
   const cover      = images.find((i) => i.is_cover) ?? images[0]
   const currentImg = images[imgIdx] ?? cover
   const priceLabel = prop.transaction_type === 'rent' ? '/mois' : 'DT'
   const locationName = prop.location?.name ?? prop.address ?? ''
   const typeLabel  = PROPERTY_TYPE_LABELS[prop.property_type] ?? prop.property_type
 
-  function prev(e: React.MouseEvent) {
-    e.preventDefault()
-    setImgIdx((i) => (i - 1 + images.length) % images.length)
+  function startSlide() {
+    if (images.length <= 1) return
+    intervalRef.current = setInterval(() => {
+      setImgIdx((i) => (i + 1) % images.length)
+    }, 1800)
   }
 
-  function next(e: React.MouseEvent) {
-    e.preventDefault()
-    setImgIdx((i) => (i + 1) % images.length)
+  function stopSlide() {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+      intervalRef.current = null
+    }
+    setImgIdx(0)
   }
+
+  useEffect(() => () => { if (intervalRef.current) clearInterval(intervalRef.current) }, [])
 
   return (
     <Link href={`/logements/${prop.id}?ref=listing`}>
-    <article
-      className="group rounded-2xl overflow-hidden shadow-[0_2px_12px_rgb(0_0_0/0.06)] hover:shadow-[0_10px_36px_rgb(0_0_0/0.12)] transition-shadow duration-300 cursor-pointer"
-      style={{ background: 'var(--color-surface)' }}
-    >
-      {/* Image with slideshow */}
-      <div className="relative h-48 overflow-hidden">
-        {currentImg ? (
-          <Image
-            src={currentImg.url}
-            alt={prop.title}
-            fill
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-            className="object-cover transition-transform duration-500 group-hover:scale-105"
-          />
-        ) : (
-          <div className="w-full h-full" style={{ background: 'var(--color-bg)' }} />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/25 to-transparent" />
+      <article
+        className="group rounded-2xl overflow-hidden cursor-pointer transition-all duration-300
+          shadow-[0_2px_14px_rgb(0_0_0/0.06)] hover:shadow-[0_20px_48px_rgb(0_0_0/0.13)]
+          hover:-translate-y-0.5"
+        style={{ background: 'var(--color-surface-warm)', border: '1px solid var(--color-border)' }}
+        onMouseEnter={startSlide}
+        onMouseLeave={stopSlide}
+      >
+        {/* Image */}
+        <div className="relative h-56 overflow-hidden">
+          {currentImg ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={currentImg.url}
+              alt={prop.title}
+              className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
+            />
+          ) : (
+            <div className="w-full h-full" style={{ background: 'var(--color-surface-deep)' }} />
+          )}
 
-        {/* Property type badge */}
-        <span className="absolute top-3 left-3 text-xs font-semibold px-2.5 py-1 rounded-full text-white"
-          style={{ background: 'var(--color-primary)' }}>
-          {typeLabel}
-        </span>
+          {/* Gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
 
-        {/* Prev / Next arrows */}
-        {hasMultiple && (
-          <>
-            <button
-              onClick={prev}
-              aria-label="Image précédente"
-              className="absolute left-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity w-7 h-7 rounded-full flex items-center justify-center text-white"
-              style={{ background: 'rgba(0,0,0,0.4)' }}
-            >
-              <IconChevronLeft />
-            </button>
-            <button
-              onClick={next}
-              aria-label="Image suivante"
-              className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity w-7 h-7 rounded-full flex items-center justify-center text-white"
-              style={{ background: 'rgba(0,0,0,0.4)' }}
-            >
-              <IconChevronRight />
-            </button>
+          {/* Property type badge */}
+          <span
+            className="absolute top-3 left-3 text-xs font-semibold px-2.5 py-1 rounded-full text-white"
+            style={{ background: 'var(--color-primary)', fontFamily: 'var(--font-sans)' }}
+          >
+            {typeLabel}
+          </span>
 
-            {/* Dot indicators */}
-            <div className="absolute bottom-10 left-0 right-0 flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          {/* Dot indicators */}
+          {images.length > 1 && (
+            <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
               {images.map((_, i) => (
                 <button
                   key={i}
                   onClick={(e) => { e.preventDefault(); setImgIdx(i) }}
                   aria-label={`Image ${i + 1}`}
-                  className="w-1.5 h-1.5 rounded-full transition-colors"
-                  style={{ background: i === imgIdx ? 'white' : 'rgba(255,255,255,0.45)' }}
+                  className="w-1.5 h-1.5 rounded-full transition-all duration-200"
+                  style={{
+                    background: i === imgIdx ? 'white' : 'rgba(255,255,255,0.4)',
+                    transform: i === imgIdx ? 'scale(1.3)' : 'scale(1)',
+                  }}
                 />
               ))}
             </div>
-          </>
-        )}
-      </div>
+          )}
 
-      {/* Content */}
-      <div className="p-4">
-        <h2
-          className="font-display font-semibold text-base leading-snug mb-1 transition-colors group-hover:text-[oklch(42%_0.09_155)]"
-          style={{ color: 'var(--color-text)' }}
-        >
-          {prop.title}
-        </h2>
-        <p className="text-xs flex items-center gap-1 mb-3" style={{ color: 'var(--color-muted)' }}>
-          <IconPin /> {locationName}
-        </p>
-
-        {/* Specs */}
-        <div className="flex items-center gap-3 text-xs mb-3" style={{ color: 'var(--color-text-secondary)' }}>
-          {prop.bedrooms != null && (
-            <>
-              <span>{prop.bedrooms}&thinsp;ch.</span>
-              <span className="w-px h-3" style={{ background: 'var(--color-border)' }} aria-hidden="true" />
-            </>
-          )}
-          {prop.bathrooms != null && (
-            <>
-              <span>{prop.bathrooms}&thinsp;sdb.</span>
-              <span className="w-px h-3" style={{ background: 'var(--color-border)' }} aria-hidden="true" />
-            </>
-          )}
-          {prop.surface != null && <span>{prop.surface}&thinsp;m²</span>}
-          {prop.floor != null && prop.floor > 0 && (
-            <>
-              <span className="w-px h-3" style={{ background: 'var(--color-border)' }} aria-hidden="true" />
-              <span>Ét.&thinsp;{prop.floor}</span>
-            </>
-          )}
+          {/* "Voir →" hint */}
+          <span
+            className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-xs font-semibold text-white px-2.5 py-1"
+            style={{ background: 'var(--color-accent)', borderRadius: '3px', fontFamily: 'var(--font-sans)' }}
+          >
+            Voir →
+          </span>
         </div>
 
-        {/* Amenity chips */}
-        {(prop.amenities?.length ?? 0) > 0 && (
-          <div className="flex flex-wrap gap-1 mb-3">
-            {prop.amenities!.slice(0, 3).map((a) => (
-              <span key={a.id} className="text-[0.65rem] px-2 py-0.5 rounded-full"
-                style={{ background: 'var(--color-bg)', color: 'var(--color-text-secondary)' }}>
-                {a.name}
-              </span>
-            ))}
-          </div>
-        )}
+        {/* Content */}
+        <div className="p-4">
+          {/* Terracotta accent line — slides in from left on hover */}
+          <div
+            className="h-[2px] -mx-4 mb-3 origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300"
+            style={{ background: 'var(--color-accent)' }}
+          />
 
-        {/* Price + CTA */}
-        <div className="flex items-end justify-between mt-1">
-          <div>
-            <p className="font-display font-bold tabular-nums" style={{ fontSize: '1.15rem', color: 'var(--color-text)' }}>
+          <h2
+            className="font-display font-semibold text-base leading-snug mb-1"
+            style={{ color: 'var(--color-text)' }}
+          >
+            {prop.title}
+          </h2>
+          <p className="text-xs flex items-center gap-1 mb-3" style={{ color: 'var(--color-muted)' }}>
+            <IconPin /> {locationName}
+          </p>
+
+          {/* Specs */}
+          <div className="flex items-center gap-3 text-xs mb-3" style={{ color: 'var(--color-text-secondary)' }}>
+            {prop.bedrooms != null && (
+              <>
+                <span>{prop.bedrooms}&thinsp;ch.</span>
+                <span className="w-px h-3" style={{ background: 'var(--color-border)' }} aria-hidden="true" />
+              </>
+            )}
+            {prop.bathrooms != null && (
+              <>
+                <span>{prop.bathrooms}&thinsp;sdb.</span>
+                <span className="w-px h-3" style={{ background: 'var(--color-border)' }} aria-hidden="true" />
+              </>
+            )}
+            {prop.surface != null && <span>{prop.surface}&thinsp;m²</span>}
+            {prop.floor != null && prop.floor > 0 && (
+              <>
+                <span className="w-px h-3" style={{ background: 'var(--color-border)' }} aria-hidden="true" />
+                <span>Ét.&thinsp;{prop.floor}</span>
+              </>
+            )}
+          </div>
+
+          {/* Amenity chips */}
+          {(prop.amenities?.length ?? 0) > 0 && (
+            <div className="flex flex-wrap gap-1 mb-3">
+              {prop.amenities!.slice(0, 3).map((a) => (
+                <span key={a.id} className="text-[0.65rem] px-2 py-0.5 rounded-full"
+                  style={{ background: 'var(--color-surface-deep)', color: 'var(--color-text-secondary)' }}>
+                  {a.name}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Price */}
+          <div className="mt-1">
+            <p
+              className="font-display font-bold tabular-nums transition-colors duration-200 group-hover:text-[var(--color-accent)]"
+              style={{ fontSize: '1.15rem', color: 'var(--color-text)' }}
+            >
               {fmt(prop.price)}{' '}
               <span className="text-sm font-normal" style={{ color: 'var(--color-muted)' }}>{priceLabel}</span>
             </p>
@@ -973,8 +986,7 @@ function PropertyCard({ prop }: { prop: Property }) {
             )}
           </div>
         </div>
-      </div>
-    </article>
+      </article>
     </Link>
   )
 }

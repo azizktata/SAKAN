@@ -12,7 +12,8 @@ interface HeroSectionProps {
 }
 
 export function HeroSection({ saleProperties, rentProperties, locations }: HeroSectionProps) {
-  const [mode, setMode] = useState<'vente' | 'location'>('vente')
+  const [mode,        setMode]        = useState<'vente' | 'location'>('vente')
+  const [stripOpen,   setStripOpen]   = useState(true)
 
   return (
     <section
@@ -34,7 +35,7 @@ export function HeroSection({ saleProperties, rentProperties, locations }: HeroS
       }} />
 
       {/* Content — left-aligned, max-width container */}
-      <div className="relative z-10 flex-1 flex flex-col justify-center px-6 md:px-12 lg:px-20 pt-24 pb-8 max-w-5xl">
+      <div className="relative z-10 flex-1 flex flex-col justify-center px-6 md:px-12 lg:px-36 pt-24 pb-8 max-w-5xl">
 
         {/* Subtle label */}
         <p className="mb-4 text-xs font-semibold uppercase tracking-[0.22em]"
@@ -42,7 +43,7 @@ export function HeroSection({ saleProperties, rentProperties, locations }: HeroS
           Immobilier · Tunisie
         </p>
 
-        {/* Headline — left-aligned, subtler size */}
+        {/* Headline */}
         <h1
           className="font-display font-bold leading-[1.05] mb-5"
           style={{
@@ -71,13 +72,52 @@ export function HeroSection({ saleProperties, rentProperties, locations }: HeroS
         </div>
       </div>
 
-      {/* Scrolling strip */}
-      <div className="relative z-10" style={{ borderTop: '1px solid oklch(45% 0.06 130 / 0.5)' }}>
-        <HeroStrip
-          saleProperties={saleProperties}
-          rentProperties={rentProperties}
-          mode={mode}
-        />
+      {/* Strip section */}
+      <div className="relative z-10">
+
+        {/* Divider row — label left, toggle right */}
+        <div
+          className="flex items-center justify-between px-6 md:px-12 lg:px-36 py-2"
+          style={{ borderTop: '1px solid oklch(45% 0.06 130 / 0.5)' }}
+        >
+          <span
+            className="text-[0.65rem] font-semibold uppercase tracking-[0.18em]"
+            style={{ color: 'oklch(55% 0.012 70)', fontFamily: 'var(--font-sans)' }}
+          >
+            Annonces en direct
+          </span>
+
+          <button
+            onClick={() => setStripOpen((o) => !o)}
+            aria-label={stripOpen ? 'Masquer les annonces' : 'Afficher les annonces'}
+            className="cursor-pointer hover:text-white flex items-center gap-1 text-[0.65rem] font-medium uppercase tracking-[0.14em] transition-colors duration-200"
+            style={{ color: 'oklch(50% 0.012 70)', fontFamily: 'var(--font-sans)', opacity: 0.75 }}
+          >
+            {stripOpen ? 'Masquer' : 'Afficher'}
+            <svg
+              className="w-3 h-3 transition-transform duration-300"
+              style={{ transform: stripOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
+              fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Strip — slides in/out */}
+        <div
+          className="overflow-hidden transition-all duration-500"
+          style={{
+            maxHeight: stripOpen ? '200px' : '0px',
+            opacity: stripOpen ? 1 : 0,
+          }}
+        >
+          <HeroStrip
+            saleProperties={saleProperties}
+            rentProperties={rentProperties}
+            mode={mode}
+          />
+        </div>
       </div>
     </section>
   )
