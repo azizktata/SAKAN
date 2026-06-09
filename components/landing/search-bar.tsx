@@ -11,7 +11,7 @@ const PROPERTY_TYPES = [
   'Villa',
   'Maison',
   'Terrain',
-  'Local commercial',
+  'Commercial',
 ]
 
 function ChevronDown() {
@@ -68,7 +68,10 @@ export function SearchBar({ onModeChange, locations }: SearchBarProps) {
     const params = new URLSearchParams()
     params.set('mode', mode)
     if (type && type !== 'Tous types') params.set('type', type)
-    if (city) params.set('location', city)
+    if (city) {
+      const loc = locations?.find((l) => l.slug === city)
+      if (loc) params.set('locationId', String(loc.id))
+    }
     router.push(`/logements?${params.toString()}`)
   }
 

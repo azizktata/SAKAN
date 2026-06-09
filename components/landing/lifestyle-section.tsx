@@ -45,7 +45,7 @@ export function LifestyleSection() {
           </Link>
 
           {/* Proche écoles */}
-          <Link href="/logements?amenity=proche-ecole"
+          <Link href="/logements?type=Maison&mode=vente"
             className="group relative overflow-hidden flex flex-col justify-end"
             style={{ minHeight: '200px', background: 'oklch(28% 0.07 130)' }}>
             <Image src="/prop-5.jpg" alt="Résidence familiale" fill
@@ -64,7 +64,7 @@ export function LifestyleSection() {
           </Link>
 
           {/* Neuf — typographic */}
-          <Link href="/logements?condition=neuf"
+          <Link href="/logements?mode=vente&type=Appartement"
             className="group relative overflow-hidden flex flex-col justify-end"
             style={{ minHeight: '200px', background: 'var(--color-surface-deep)' }}>
             <div className="absolute top-4 left-4 font-display font-bold select-none pointer-events-none"

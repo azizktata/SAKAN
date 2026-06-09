@@ -11,7 +11,19 @@ const slugToType: Record<string, string> = {
   villas: 'Villa',
   maisons: 'Maison',
   terrains: 'Terrain',
-  'locaux-commerciaux': 'Local commercial',
+  'locaux-commerciaux': 'Commercial',
+}
+
+// Numeric location IDs from the API (governorate level for broad results)
+const slugToLocationId: Record<string, number> = {
+  'tunis':    1,
+  'ariana':   2,
+  'nabeul':   5,
+  'sousse':   12,
+  'monastir': 13,
+  'sfax':     15,
+  'la-marsa': 25,
+  'hammamet': 46,
 }
 
 function IconArrow() {
@@ -26,7 +38,10 @@ export function BrowseSection() {
   const [mode, setMode] = useState<'vente' | 'location'>('vente')
 
   function cityHref(slug: string) {
-    return `/logements?location=${slug}&mode=${mode}`
+    const id = slugToLocationId[slug]
+    return id
+      ? `/logements?locationId=${id}&mode=${mode}`
+      : `/logements?mode=${mode}`
   }
 
   function typeHref(slug: string) {

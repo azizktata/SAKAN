@@ -53,9 +53,9 @@ export function SiteFooter() {
           <FooterCol title="Location">
             {[
               { label: 'Appartements', href: '/logements?mode=location&type=Appartement'      },
-              { label: 'Bureaux',      href: '/logements?mode=location&type=Bureaux'          },
+              { label: 'Bureaux',      href: '/logements?mode=location&type=Bureau'           },
               { label: 'Villas',       href: '/logements?mode=location&type=Villa'            },
-              { label: 'Locaux',       href: '/logements?mode=location&type=Local+commercial' },
+              { label: 'Locaux',       href: '/logements?mode=location&type=Commercial'       },
             ].map((t) => (
               <li key={t.label}><Link href={t.href} className="transition-colors hover:text-white">{t.label}</Link></li>
             ))}

@@ -41,8 +41,8 @@ export function FeaturedSection({ saleProperties, rentProperties }: FeaturedSect
   if (saleProperties.length === 0 && rentProperties.length === 0) return null
 
   const viewAllHref = mode === 'vente'
-    ? '/logements?transaction_type=sale'
-    : '/logements?transaction_type=rent'
+    ? '/logements?mode=vente'
+    : '/logements?mode=location'
 
   return (
     <section className="py-20 md:py-28" style={{ background: 'var(--color-bg)' }}>

@@ -68,7 +68,7 @@ export default function AnnoncesPage() {
   }
 
   return (
-    <main className="flex-1 px-6 py-8 max-w-4xl w-full">
+    <main className="flex-1 px-4 sm:px-6 py-6 sm:py-8 max-w-6xl w-full">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="font-display font-semibold text-2xl" style={{ color: 'var(--color-text)' }}>

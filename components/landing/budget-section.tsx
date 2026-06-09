@@ -12,17 +12,17 @@ function IconArrow() {
 }
 
 const BUDGETS_VENTE = [
-  { range: 'Moins de 150 000 DT',  label: 'Primo-accédants', sub: 'Appartements, studios, terrains',    href: '/logements?transaction_type=sale&max_price=150000'                       },
-  { range: '150 000 – 350 000 DT', label: 'Familles',        sub: 'Appartements 3–4 pièces, maisons',  href: '/logements?transaction_type=sale&min_price=150000&max_price=350000'     },
-  { range: '350 000 – 700 000 DT', label: 'Bien établis',    sub: 'Villas, maisons de prestige',        href: '/logements?transaction_type=sale&min_price=350000&max_price=700000'     },
-  { range: 'Plus de 700 000 DT',   label: 'Premium',         sub: "Propriétés d'exception",             href: '/logements?transaction_type=sale&min_price=700000'                       },
+  { range: 'Moins de 150 000 DT',  label: 'Primo-accédants', sub: 'Appartements, studios, terrains',    href: '/logements?mode=vente&maxPrice=150000'                    },
+  { range: '150 000 – 350 000 DT', label: 'Familles',        sub: 'Appartements 3–4 pièces, maisons',  href: '/logements?mode=vente&minPrice=150000&maxPrice=350000'    },
+  { range: '350 000 – 700 000 DT', label: 'Bien établis',    sub: 'Villas, maisons de prestige',        href: '/logements?mode=vente&minPrice=350000&maxPrice=700000'    },
+  { range: 'Plus de 700 000 DT',   label: 'Premium',         sub: "Propriétés d'exception",             href: '/logements?mode=vente&minPrice=700000'                    },
 ] as const
 
 const BUDGETS_LOCATION = [
-  { range: 'Moins de 500 DT/mois',      label: 'Petits budgets', sub: 'Studios, S+1, colocations',         href: '/logements?transaction_type=rent&max_price=500'                         },
-  { range: '500 – 1 000 DT/mois',       label: 'Confort',        sub: 'S+2, appartements meublés',          href: '/logements?transaction_type=rent&min_price=500&max_price=1000'          },
-  { range: '1 000 – 2 500 DT/mois',     label: 'Prestige',       sub: 'Villas, appartements haut standing', href: '/logements?transaction_type=rent&min_price=1000&max_price=2500'         },
-  { range: 'Plus de 2 500 DT/mois',     label: 'Exception',      sub: 'Propriétés premium & bord de mer',   href: '/logements?transaction_type=rent&min_price=2500'                        },
+  { range: 'Moins de 500 DT/mois',      label: 'Petits budgets', sub: 'Studios, S+1, colocations',         href: '/logements?mode=location&maxPrice=500'                         },
+  { range: '500 – 1 000 DT/mois',       label: 'Confort',        sub: 'S+2, appartements meublés',          href: '/logements?mode=location&minPrice=500&maxPrice=1000'           },
+  { range: '1 000 – 2 500 DT/mois',     label: 'Prestige',       sub: 'Villas, appartements haut standing', href: '/logements?mode=location&minPrice=1000&maxPrice=2500'          },
+  { range: 'Plus de 2 500 DT/mois',     label: 'Exception',      sub: 'Propriétés premium & bord de mer',   href: '/logements?mode=location&minPrice=2500'                        },
 ] as const
 
 export function BudgetSection() {

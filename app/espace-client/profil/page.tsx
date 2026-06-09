@@ -36,7 +36,7 @@ export default function ProfilPage() {
   }
 
   return (
-    <main className="flex-1 px-6 py-8 max-w-xl w-full">
+    <main className="flex-1 px-4 sm:px-6 py-6 sm:py-8 max-w-2xl w-full">
       <div className="mb-6">
         <h1 className="font-display font-semibold text-2xl" style={{ color: 'var(--color-text)' }}>
           Mon profil
