@@ -20,6 +20,13 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
 
 function MiniBar({ days }: { days: DailyTrend[] }) {
   if (days.length === 0) return null
+  const allZero = days.every(d => d.views === 0)
+  if (allZero) return (
+    <div className="flex items-center justify-center h-10 rounded-lg"
+      style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
+      <span className="text-xs" style={{ color: 'var(--color-muted)' }}>Aucune vue sur cette période</span>
+    </div>
+  )
   const max = Math.max(...days.map(d => d.views), 1)
   return (
     <div className="flex items-end gap-0.5 h-10">

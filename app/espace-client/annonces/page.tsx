@@ -30,6 +30,8 @@ export default function AnnoncesPage() {
   const [drawerOpen, setDrawerOpen] = useState<{ id: string; title: string } | null>(null)
   const [page, setPage] = useState(1)
   const PAGE_SIZE = 9
+  const totalPages = Math.ceil(properties.length / PAGE_SIZE)
+  const pagedProperties = properties.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   useEffect(() => {
     propertiesApi.myList()
@@ -108,50 +110,44 @@ export default function AnnoncesPage() {
           </Link>
         </div>
       ) : (
-        {(() => {
-          const totalPages = Math.ceil(properties.length / PAGE_SIZE)
-          const paged = properties.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
-          return (
-            <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {paged.map((p) => (
-                  <PropertyCardManage
-                    key={p.id}
-                    property={p}
-                    stats={statsMap[p.id]}
-                    onDelete={handleDelete}
-                    onToggleStatus={handleToggleStatus}
-                    onViewStats={(id) => setDrawerOpen({ id, title: p.title })}
-                  />
-                ))}
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {pagedProperties.map((p) => (
+              <PropertyCardManage
+                key={p.id}
+                property={p}
+                stats={statsMap[p.id]}
+                onDelete={handleDelete}
+                onToggleStatus={handleToggleStatus}
+                onViewStats={(id) => setDrawerOpen({ id, title: p.title })}
+              />
+            ))}
+          </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-6 pt-4"
+              style={{ borderTop: '1px solid var(--color-border)' }}>
+              <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                Page {page} / {totalPages} · {properties.length} bien{properties.length !== 1 ? 's' : ''}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  disabled={page === 1}
+                  onClick={() => setPage(p => p - 1)}
+                  className="px-4 py-2 text-xs font-medium rounded-xl disabled:opacity-40 transition-colors"
+                  style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }}>
+                  ← Précédent
+                </button>
+                <button
+                  disabled={page === totalPages}
+                  onClick={() => setPage(p => p + 1)}
+                  className="px-4 py-2 text-xs font-medium rounded-xl disabled:opacity-40 transition-colors"
+                  style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }}>
+                  Suivant →
+                </button>
               </div>
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-6 pt-4"
-                  style={{ borderTop: '1px solid var(--color-border)' }}>
-                  <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                    Page {page} / {totalPages} · {properties.length} bien{properties.length !== 1 ? 's' : ''}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      disabled={page === 1}
-                      onClick={() => setPage(p => p - 1)}
-                      className="px-4 py-2 text-xs font-medium rounded-xl disabled:opacity-40 transition-colors"
-                      style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }}>
-                      ← Précédent
-                    </button>
-                    <button
-                      disabled={page === totalPages}
-                      onClick={() => setPage(p => p + 1)}
-                      className="px-4 py-2 text-xs font-medium rounded-xl disabled:opacity-40 transition-colors"
-                      style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }}>
-                      Suivant →
-                    </button>
-                  </div>
-                </div>
-              )}
-            </>
-          )
-        })()}
+            </div>
+          )}
+        </>
       )}
 
       {drawerOpen && (
