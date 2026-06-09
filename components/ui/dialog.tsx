@@ -46,7 +46,7 @@ export function Dialog({ open, onClose, children, maxWidth = 'max-w-lg', scrollK
       <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 pointer-events-none">
         <div
           ref={scrollRef}
-          className={`w-full ${maxWidth} max-h-[92dvh] overflow-y-auto rounded-t-3xl sm:rounded-3xl pointer-events-auto`}
+          className={`w-full ${maxWidth} max-h-[92dvh] overflow-y-auto rounded-t-3xl sm:rounded-3xl pointer-events-auto dialog-scroll`}
           style={{ background: 'var(--color-surface)' }}
         >
           {children}

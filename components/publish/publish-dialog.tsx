@@ -53,16 +53,110 @@ const STEP_FIELDS: Record<number, (keyof WizardSchema)[]> = {
   5: [],
 }
 
-const STEPS = [
-  { title: 'Type de bien',      subtitle: 'Que souhaitez-vous faire ?' },
-  { title: 'Localisation',      subtitle: 'Où se trouve le bien ?' },
-  { title: 'Détails',           subtitle: 'Caractéristiques du bien' },
-  { title: 'Équipements',       subtitle: 'Sélectionnez les critères disponibles' },
-  { title: 'Photos',            subtitle: 'Ajoutez des photos attractives' },
-  { title: 'Vérification',      subtitle: 'Relisez avant de publier' },
+export const STEPS = [
+  { title: 'Type de bien',  subtitle: 'Transaction et catégorie' },
+  { title: 'Localisation',  subtitle: 'Où se trouve le bien ?' },
+  { title: 'Détails',       subtitle: 'Caractéristiques du bien' },
+  { title: 'Équipements',   subtitle: 'Critères disponibles' },
+  { title: 'Photos',        subtitle: 'Ajoutez des photos attractives' },
+  { title: 'Vérification',  subtitle: 'Relisez avant de publier' },
 ]
 
-const TOTAL = STEPS.length
+export const TOTAL = STEPS.length
+
+
+// ── Step header ───────────────────────────────────────────────────────────────
+
+function StepHeader({ step, onClose, editId }: { step: number; onClose: () => void; editId?: string }) {
+  const meta = STEPS[step - 1]
+  return (
+    <div className="sticky top-0 z-10 rounded-t-3xl" style={{ background: 'var(--color-primary)' }}>
+      {/* Step indicators */}
+      <div className="flex items-center justify-between px-6 pt-5 pb-4">
+        <div className="flex items-center gap-1.5">
+          {STEPS.map((_, i) => {
+            const idx     = i + 1
+            const done    = idx < step
+            const current = idx === step
+            return (
+              <div key={i} className="flex items-center gap-1.5">
+                <div
+                  className="flex items-center justify-center rounded-full text-[10px] font-bold transition-all duration-300"
+                  style={{
+                    width: '22px', height: '22px',
+                    background: done ? 'var(--color-accent)' : current ? 'white' : 'oklch(100% 0 0 / 0.12)',
+                    color: done ? 'white' : current ? 'var(--color-primary)' : 'oklch(100% 0 0 / 0.4)',
+                  }}
+                >
+                  {done ? (
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : idx}
+                </div>
+                {i < STEPS.length - 1 && (
+                  <div className="w-3 h-px transition-all duration-300"
+                    style={{ background: done ? 'var(--color-accent)' : 'oklch(100% 0 0 / 0.2)' }} />
+                )}
+              </div>
+            )
+          })}
+        </div>
+        <button
+          onClick={onClose}
+          aria-label="Fermer"
+          className="w-8 h-8 rounded-full flex items-center justify-center transition-colors shrink-0"
+          style={{ background: 'oklch(100% 0 0 / 0.12)', color: 'oklch(100% 0 0 / 0.7)' }}
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      {/* Title */}
+      <div className="px-6 pb-5">
+        <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: 'oklch(60% 0.012 70)' }}>
+          {editId ? 'Modification' : 'Publication'} · Étape {step} sur {TOTAL}
+        </p>
+        <h2 className="font-display font-bold leading-tight" style={{ fontSize: 'clamp(1.1rem, 2.5vw, 1.4rem)', color: 'white', letterSpacing: '-0.02em' }}>
+          {meta.title}
+        </h2>
+        <p className="text-sm mt-1" style={{ color: 'oklch(68% 0.012 70)' }}>
+          {meta.subtitle}
+        </p>
+      </div>
+    </div>
+  )
+}
+
+// ── Auth gate header ──────────────────────────────────────────────────────────
+
+function AuthHeader({ onClose, editId }: { onClose: () => void; editId?: string }) {
+  return (
+    <div className="rounded-t-3xl" style={{ background: 'var(--color-primary)' }}>
+      <div className="flex items-center justify-between px-6 pt-5 pb-5">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: 'oklch(60% 0.012 70)' }}>
+            SAKAN
+          </p>
+          <h2 className="font-display font-bold leading-tight" style={{ fontSize: 'clamp(1.1rem, 2.5vw, 1.4rem)', color: 'white', letterSpacing: '-0.02em' }}>
+            {editId ? 'Modifier le bien' : 'Publier un bien'}
+          </h2>
+        </div>
+        <button
+          onClick={onClose}
+          aria-label="Fermer"
+          className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+          style={{ background: 'oklch(100% 0 0 / 0.12)', color: 'oklch(100% 0 0 / 0.7)' }}
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  )
+}
 
 // ── Main component ────────────────────────────────────────────────────────────
 
@@ -76,11 +170,11 @@ export function PublishDialog() {
   const open   = searchParams.get('publish') === 'open'
   const editId = searchParams.get('edit') ?? undefined
 
-  const [step, setStep]             = useState(1)
-  const [submitting, setSubmitting] = useState(false)
+  const [step, setStep]               = useState(1)
+  const [submitting, setSubmitting]   = useState(false)
   const [loadingEdit, setLoadingEdit] = useState(false)
-  const [locations, setLocations]   = useState<Location[]>([])
-  const [amenities, setAmenities]   = useState<Amenity[]>([])
+  const [locations, setLocations]     = useState<Location[]>([])
+  const [amenities, setAmenities]     = useState<Amenity[]>([])
   const estPrefillRef = useRef<{
     isFurnished: boolean; hasParking: boolean; hasElevator: boolean
     hasGarden: boolean; hasPool: boolean; hasTerrace: boolean
@@ -88,15 +182,12 @@ export function PublishDialog() {
   } | null>(null)
   const prefillCitySlugRef = useRef<string | null>(null)
 
-  // Load reference data when dialog opens
   useEffect(() => {
     if (!open) return
     referenceApi.locations().then((r) => setLocations(r.data)).catch(() => {})
     referenceApi.amenities().then((r) => setAmenities(r.data)).catch(() => {})
   }, [open])
 
-  // Apply estimation prefill once dialog is open AND user is authenticated
-  // Runs on both open-change and user-change to handle the post-login redirect case
   useEffect(() => {
     if (!open || !user || editId) return
     if (typeof window === 'undefined') return
@@ -133,15 +224,12 @@ export function PublishDialog() {
       form.setValue('floor', est.floor)
       form.setValue('isFurnished', est.isFurnished)
       if (est.estimatedPrice) form.setValue('price', est.estimatedPrice)
-      // Set address to governorate as a sensible default so validation passes
       if (est.address) {
         form.setValue('address', est.address)
       } else if (est.governorate) {
         form.setValue('address', est.governorate)
       }
-      // Store citySlug to be matched once locations API resolves
       if (est.citySlug) prefillCitySlugRef.current = est.citySlug
-      // Store all amenity flags — will be matched by name once amenities API resolves
       estPrefillRef.current = {
         isFurnished:        est.isFurnished,
         hasParking:         est.hasParking,
@@ -155,19 +243,16 @@ export function PublishDialog() {
         hasHeating:         est.hasHeating          ?? false,
       }
       sessionStorage.removeItem('sakan_est_prefill')
-      // Skip to step 3 (details) — type + location are pre-filled from estimation
       setStep(3)
     } catch {
       // ignore malformed data
     }
   }, [open, user]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Match prefill citySlug to a locationId once locations are loaded
   useEffect(() => {
     if (!locations.length || !prefillCitySlugRef.current) return
     const slug = prefillCitySlugRef.current
     prefillCitySlugRef.current = null
-    // Match by slug (exact), then fall back to name normalization
     const match = locations.find((loc) =>
       loc.slug === slug ||
       loc.name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, '-') === slug
@@ -175,7 +260,6 @@ export function PublishDialog() {
     if (match) form.setValue('locationId', String(match.id))
   }, [locations]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Map estimation amenity flags to API amenity IDs once amenities are loaded
   useEffect(() => {
     if (!amenities.length || !estPrefillRef.current) return
     const flags = estPrefillRef.current
@@ -337,7 +421,6 @@ export function PublishDialog() {
   }
 
   async function handlePublish() {
-    // Capture raw images (with localFile) before form.trigger() strips unknown keys via Zod
     const rawImages = form.getValues('images') as RawImage[] | undefined
     const valid = await form.trigger()
     if (!valid) return
@@ -361,94 +444,45 @@ export function PublishDialog() {
     }
   }
 
-  const meta          = STEPS[step - 1]
   const showAuthGate  = !authLoading && !user
-  const dialogTitle   = editId ? 'Modifier le bien' : 'Publier un bien'
+  const isLastStep    = step === TOTAL
 
   return (
-    <Dialog open={open} onClose={close} maxWidth="max-w-lg">
-      {/* Header */}
-      <div className="px-6 pt-6 pb-4 sticky top-0 z-10 rounded-t-3xl" style={{ background: 'var(--color-surface)' }}>
-        {!showAuthGate && (
-          <>
-            {/* Progress bar — click any completed step to go back */}
-            <div className="flex items-center gap-1.5 mb-4">
-              {STEPS.map((_, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => { if (i + 1 < step) setStep(i + 1) }}
-                  className="h-1 rounded-full flex-1 transition-all duration-300"
-                  style={{
-                    background: i < step ? 'var(--color-primary)' : 'var(--color-border)',
-                    cursor: i + 1 < step ? 'pointer' : 'default',
-                  }}
-                  aria-label={i + 1 < step ? `Retour à l'étape ${i + 1}` : undefined}
-                />
-              ))}
-            </div>
+    <Dialog open={open} onClose={close} maxWidth="max-w-2xl" scrollKey={step}>
 
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider mb-0.5" style={{ color: 'var(--color-muted)' }}>
-                  Étape {step} sur {TOTAL}
-                </p>
-                <h2 className="font-display font-semibold text-lg leading-tight" style={{ color: 'var(--color-text)' }}>
-                  {meta.title}
-                </h2>
-                <p className="text-sm mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
-                  {meta.subtitle}
-                </p>
-              </div>
-              <button
-                onClick={close}
-                aria-label="Fermer"
-                className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5 transition-colors"
-                style={{ color: 'var(--color-muted)' }}
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          </>
-        )}
-
-        {showAuthGate && (
-          <div className="flex items-center justify-between">
-            <h2 className="font-display font-semibold text-lg" style={{ color: 'var(--color-text)' }}>
-              {dialogTitle}
-            </h2>
-            <button
-              onClick={close}
-              aria-label="Fermer"
-              className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors"
-              style={{ color: 'var(--color-muted)' }}
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+      {/* Auth gate */}
+      {showAuthGate && (
+        <>
+          <AuthHeader onClose={close} editId={editId} />
+          <div className="px-6 py-6" style={{ background: 'var(--color-bg)' }}>
+            <Step0Auth onClose={close} />
           </div>
-        )}
-      </div>
+        </>
+      )}
 
-      {/* Step content */}
-      <div className="px-6 pb-2">
-        {authLoading || loadingEdit ? (
-          <div className="flex justify-center py-12">
+      {/* Loading */}
+      {!showAuthGate && (authLoading || loadingEdit) && (
+        <>
+          <AuthHeader onClose={close} editId={editId} />
+          <div className="flex justify-center py-16" style={{ background: 'var(--color-bg)' }}>
             <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
               style={{ borderColor: 'var(--color-primary)', borderTopColor: 'transparent' }} />
           </div>
-        ) : showAuthGate ? (
-          <Step0Auth onClose={close} />
-        ) : (
-          <>
-            {step === 1 && <Step1Type form={form} />}
-            {step === 2 && <Step2Location form={form} locations={locations} />}
-            {step === 3 && <Step3Details form={form} />}
+        </>
+      )}
+
+      {/* Steps */}
+      {!showAuthGate && !authLoading && !loadingEdit && (
+        <>
+          <StepHeader step={step} onClose={close} editId={editId} />
+
+          {/* Content */}
+          <div className="px-6 pt-6 pb-2" style={{ background: 'var(--color-bg)' }}>
+            {step === 1 && <Step1Type      form={form} />}
+            {step === 2 && <Step2Location  form={form} locations={locations} />}
+            {step === 3 && <Step3Details   form={form} />}
             {step === 4 && <Step4Amenities form={form} amenities={amenities} />}
-            {step === 5 && <Step5Images form={form} />}
+            {step === 5 && <Step5Images    form={form} />}
             {step === 6 && (
               <Step6Review
                 form={form}
@@ -457,37 +491,41 @@ export function PublishDialog() {
                 isSubmitting={submitting}
               />
             )}
-          </>
-        )}
-      </div>
+          </div>
 
-      {/* Footer nav — steps 1–5 show Précédent + Suivant; step 6 shows Précédent only (actions are in Step6Review) */}
-      {!showAuthGate && !authLoading && !loadingEdit && (
-        <div className="sticky bottom-0 px-6 pb-6 pt-4 flex items-center justify-between gap-3"
-          style={{ background: 'var(--color-surface)' }}>
-          {step > 1 ? (
-            <button
-              type="button"
-              onClick={goPrev}
-              className="px-5 py-3 rounded-2xl text-sm font-semibold border transition-colors"
-              style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}
+          {/* Footer — not shown on last step (actions are inside Step6Review) */}
+          {!isLastStep && (
+            <div
+              className="sticky bottom-0 px-6 pb-6 pt-4 flex items-center justify-between gap-3"
+              style={{ background: 'var(--color-bg)', borderTop: '1px solid var(--color-border)' }}
             >
-              Précédent
-            </button>
-          ) : (
-            <div />
+              <button
+                type="button"
+                onClick={goPrev}
+                disabled={step === 1}
+                className="flex items-center gap-2 px-5 py-3 text-sm font-semibold border-2 transition-colors disabled:opacity-40"
+                style={{ borderRadius: '3px', borderColor: 'var(--color-border-strong)', color: 'var(--color-text-secondary)' }}
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+                Précédent
+              </button>
+
+              <button
+                type="button"
+                onClick={goNext}
+                className="flex items-center gap-2 px-7 py-3 text-sm font-bold text-white transition-opacity hover:opacity-90"
+                style={{ background: 'var(--color-primary)', borderRadius: '3px' }}
+              >
+                Suivant
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
           )}
-          {step < TOTAL && (
-            <button
-              type="button"
-              onClick={goNext}
-              className="px-6 py-3 rounded-2xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
-              style={{ background: 'var(--color-primary)' }}
-            >
-              Suivant
-            </button>
-          )}
-        </div>
+        </>
       )}
     </Dialog>
   )

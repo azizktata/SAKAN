@@ -32,12 +32,13 @@ NEXT_PUBLIC_API_URL=http://localhost:8000/api   # Laravel backend base URL
 /app
   /page.tsx                              ✓ Landing page (full — all sections)
   /auth/page.tsx                         ✓ Login / register page (client, Suspense)
+  /auth/callback/page.tsx                ✓ Google OAuth callback — detects ?auth=success, calls authApi.me()
   /logements/page.tsx                    ✓ Listings (grid/filter/sort + Leaflet map)
   /logements/[slug]/page.tsx             ✓ Property detail — server component (metadata, notFound)
   /logements/[slug]/detail-client.tsx    ✓ Property detail — client component (carousel, contact modal)
   /espace-client/layout.tsx              ✓ Client dashboard layout with sidebar (auth-protected)
   /espace-client/page.tsx                ✓ Stats + recent listings + recent contacts
-  /espace-client/annonces/               ✓ My listings
+  /espace-client/annonces/page.tsx       ✓ My listings; stats-drawer.tsx = per-property stats slide-over
   /espace-client/contacts/               ✓ Received inquiries
   /espace-client/profil/                 ✓ Profile management
   /espace-client/analytics/             ✓ Owner analytics dashboard (views, contacts, trend charts)
@@ -49,16 +50,25 @@ NEXT_PUBLIC_API_URL=http://localhost:8000/api   # Laravel backend base URL
   /louer/page.tsx                        → Rental listings (separate from /logements)
 /components
   /layout/navbar.tsx                     ✓ Sticky navbar; `initialDark` prop for hero-overlay mode
+  /layout/site-footer.tsx                ✓ Site footer
   /landing/search-bar.tsx                ✓ Buy/Rent toggle + type select + location input
   /landing/browse-section.tsx            ✓ Browse by city/type (client component, mode toggle)
   /listing/listing-view.tsx              ✓ Full filter bar, property cards, pagination, map/grid toggle
   /listing/MapView.tsx                   ✓ Leaflet map with custom price markers and hover tooltips
-  /publish/publish-dialog.tsx            ✓ 6-step publish dialog (step-0-auth through step-6-review)
+  /publish/publish-dialog.tsx            ✓ 6-step publish wizard (URL-param driven: ?publish=open)
+  /publish/publish-dialog-client.tsx     ✓ Client wrapper (Suspense boundary) — import this, not publish-dialog.tsx
+  /estimation/estimation-dialog.tsx      ✓ 3-step AI estimation wizard (URL-param driven: ?estimer=open)
+  /estimation/estimation-dialog-client.tsx ✓ Client wrapper (Suspense boundary) — import this
+  /estimation/est-step1-type-location.tsx  ✓ Step 1: property type + location + zone score
+  /estimation/est-step-2-details.tsx       ✓ Step 2: surface, condition, amenities, building age
+  /estimation/est-step-3-result.tsx        ✓ Step 3: low/mid/high price range + feedback buttons
+  /session-provider.tsx                  ✓ Client component — starts/pings/ends sessions via sessionApi; mounted in app/layout.tsx
   /espace-client/sidebar.tsx             ✓ Dashboard sidebar nav + user profile display
   /espace-client/property-card-manage.tsx ✓ Property card for dashboard management
   /espace-client/stats-card.tsx          ✓ Stats display
   /admin/admin-sidebar.tsx               ✓ Admin sidebar nav
-  /ui/dialog.tsx                         ✓ Dialog component
+  /ui/dialog.tsx                         ✓ Dialog component (maxWidth, scrollKey props)
+  /ui/toast.tsx                          ✓ Toast system — useToast() hook + <ToastContainer />
 /data
   /properties.ts         ✓ ALL_PROPERTIES mock array + Property type (includes lat/lng)
   /cities.ts             ✓ Tunisian cities list
@@ -66,6 +76,9 @@ NEXT_PUBLIC_API_URL=http://localhost:8000/api   # Laravel backend base URL
 /lib
   /api.ts                ✓ Centralized API client (axios) with all endpoint namespaces
   /auth-context.tsx      ✓ React Context — provides useAuth() hook
+  /estimation-engine.ts  ✓ Local heuristic price estimator (fallback when ML returns fallback:true)
+  /visitor.ts            ✓ getVisitorKey()/setVisitorKey() — visitor_key cookie (1yr TTL)
+  /session.ts            ✓ getSessionToken()/setSessionToken()/clearSessionToken() — sessionStorage wrapper
 proxy.ts                 ✓ Next.js middleware (named proxy.ts) — protects /espace-client/* and /admin/*
 ```
 
@@ -109,6 +122,23 @@ Client-side utilities (not in api.ts):
 - `lib/visitor.ts` — `getVisitorKey()` / `setVisitorKey()` — reads/writes `visitor_key` cookie (1yr TTL) for anonymous tracking
 - `lib/session.ts` — `getSessionToken()` / `setSessionToken()` / `clearSessionToken()` — sessionStorage wrapper for session lifecycle
 - `lib/estimation-engine.ts` — local heuristic fallback for price estimation; used when ML service is unreachable (`fallback: true`)
+
+## URL-Param Driven Dialogs
+
+Dialogs are opened/closed by setting a URL search param, not by local state. This keeps deep-linking and back-navigation working.
+
+- `?publish=open` → opens the publish wizard (`PublishDialogClient`)
+- `?estimer=open` → opens the estimation wizard (`EstimationDialogClient`)
+
+To open a dialog: `router.push('?publish=open')`. To close: delete the param and `router.push(...)`. Always import the `*-client.tsx` wrapper (not the raw dialog file) because the wrappers provide the required `<Suspense>` boundary for `useSearchParams()`.
+
+The estimation wizard pre-fills data from `sessionStorage` key `sakan_est_prefill` when launched from the publish wizard result screen.
+
+## useToast
+
+`components/ui/toast.tsx` exports:
+- `useToast()` hook — returns `{ toast }` where `toast({ message, type })` queues a notification
+- `<ToastContainer />` — renders the toast list; mounted once in `app/layout.tsx`
 
 ## Dual Property Types
 
