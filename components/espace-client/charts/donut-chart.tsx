@@ -7,11 +7,12 @@ interface DonutSlice {
 interface DonutChartProps {
   slices: DonutSlice[]
   size?: number
+  centerLabel?: string
 }
 
 const CIRCUMFERENCE = 2 * Math.PI * 40
 
-export function DonutChart({ slices, size = 104 }: DonutChartProps) {
+export function DonutChart({ slices, size = 104, centerLabel = 'biens' }: DonutChartProps) {
   const total = slices.reduce((s, sl) => s + sl.value, 0)
   if (total === 0) {
     return (
@@ -59,7 +60,7 @@ export function DonutChart({ slices, size = 104 }: DonutChartProps) {
             {total}
           </span>
           <span className="text-[9px] font-semibold uppercase tracking-wider mt-0.5" style={{ color: 'var(--color-muted)' }}>
-            biens
+            {centerLabel}
           </span>
         </div>
       </div>

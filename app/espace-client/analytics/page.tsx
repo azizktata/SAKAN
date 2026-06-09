@@ -35,6 +35,19 @@ type Row = {
 
 function fmt(n: number) { return n.toLocaleString('fr-TN') }
 
+const TYPE_LABEL_MAP: Record<string, string> = {
+  apartment:  'Appartement',
+  villa:      'Villa',
+  house:      'Maison',
+  land:       'Terrain',
+  commercial: 'Commercial',
+  office:     'Bureau',
+}
+
+function normalizeType(raw: string): string {
+  return TYPE_LABEL_MAP[raw?.toLowerCase()] ?? (raw || 'Autre')
+}
+
 function fmtDuration(s: number | null) {
   if (s == null) return '—'
   if (s < 60) return `${Math.round(s)}s`
@@ -185,7 +198,7 @@ export default function AnalyticsPage() {
     Bureau:      'oklch(60% 0.08 300)',
   }
   const typeCounts = rows.reduce<Record<string, number>>((acc, r) => {
-    const t = r.property_type || 'Autre'
+    const t = normalizeType(r.property_type)
     acc[t] = (acc[t] ?? 0) + 1
     return acc
   }, {})
@@ -415,7 +428,8 @@ export default function AnalyticsPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* Sortable table — lg:col-span-2 */}
             <div className="lg:col-span-2 rounded-2xl overflow-hidden" style={{ border: '1px solid var(--color-border)' }}>
-              <table className="w-full text-sm">
+              <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-[400px]">
                 <thead>
                   <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
                     <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wider" style={{ color: 'var(--color-muted)' }}>Bien</th>
@@ -485,6 +499,7 @@ export default function AnalyticsPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
 
             {/* Property type donut */}
@@ -523,7 +538,7 @@ export default function AnalyticsPage() {
               </p>
               {(() => {
                 const typeViews = rows.reduce<Record<string, number>>((acc, r) => {
-                  const t = r.property_type || 'Autre'
+                  const t = normalizeType(r.property_type)
                   acc[t] = (acc[t] ?? 0) + r.stats.total_views
                   return acc
                 }, {})
@@ -540,7 +555,7 @@ export default function AnalyticsPage() {
                   .filter(([, v]) => v > 0)
                   .map(([label, value]) => ({ label, value, color: TYPE_COLORS[label] ?? 'var(--color-muted)' }))
                 return slices.length > 0
-                  ? <DonutChart slices={slices} size={100} />
+                  ? <DonutChart slices={slices} size={100} centerLabel="vues" />
                   : <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Aucune vue enregistrée.</p>
               })()}
             </Card>
@@ -568,7 +583,7 @@ export default function AnalyticsPage() {
                     color: `oklch(${[42, 52, 58, 65, 48, 60, 55][i % 7]}% ${[0.10, 0.12, 0.14, 0.09, 0.11, 0.08, 0.13][i % 7]} ${LOCATION_HUES[i % 10]})`,
                   }))
                 return slices.length > 0
-                  ? <DonutChart slices={slices} size={100} />
+                  ? <DonutChart slices={slices} size={100} centerLabel="vues" />
                   : <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Aucune vue enregistrée.</p>
               })()}
             </Card>

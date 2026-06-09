@@ -105,8 +105,12 @@ export function StatsDrawer({ propertyId, title, onClose }: Props) {
                 </p>
                 <MiniBar days={trend} />
                 <div className="flex justify-between mt-1">
-                  <span className="text-xs" style={{ color: 'var(--color-muted)' }}>{trend[0]?.date?.slice(5)}</span>
-                  <span className="text-xs" style={{ color: 'var(--color-muted)' }}>{trend[trend.length - 1]?.date?.slice(5)}</span>
+                  <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                    {trend[0]?.date ? new Date(trend[0].date).toLocaleDateString('fr-TN', { day: 'numeric', month: 'short' }) : ''}
+                  </span>
+                  <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                    {trend[trend.length - 1]?.date ? new Date(trend[trend.length - 1].date).toLocaleDateString('fr-TN', { day: 'numeric', month: 'short' }) : ''}
+                  </span>
                 </div>
               </div>
             )}
