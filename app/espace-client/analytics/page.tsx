@@ -216,39 +216,15 @@ export default function AnalyticsPage() {
     <main className="flex-1 px-4 sm:px-6 py-6 sm:py-8 max-w-6xl w-full">
 
       {/* ── Page header ───────────────────────────────────────────────────── */}
-      <div className="mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-        <div>
-          <SectionLabel text="Tableau de bord" />
-          <h1 className="font-display font-bold leading-tight"
-            style={{ fontSize: 'clamp(1.5rem, 2.5vw, 2rem)', color: 'var(--color-text)', letterSpacing: '-0.02em' }}>
-            Statistiques
-          </h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--color-text-secondary)' }}>
-            Performance de {properties.length === 0 ? 'vos biens' : `vos ${properties.length} bien${properties.length > 1 ? 's' : ''}`}
-          </p>
-        </div>
-
-        {/* Controls */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {properties.length > 0 && (
-            <select
-              value={selectedId}
-              onChange={e => handlePropertyChange(e.target.value)}
-              className="text-xs font-medium px-3 py-2 rounded-xl border appearance-none cursor-pointer"
-              style={{
-                background:   'var(--color-surface)',
-                border:       '1px solid var(--color-border)',
-                color:        'var(--color-text)',
-                outlineColor: 'var(--color-primary)',
-              }}>
-              <option value="all">Toutes les annonces</option>
-              {properties.map(p => (
-                <option key={p.id} value={p.id}>{p.title}</option>
-              ))}
-            </select>
-          )}
-          <PeriodToggle value={trendDays} onChange={handlePeriodChange} />
-        </div>
+      <div className="mb-8">
+        <SectionLabel text="Tableau de bord" />
+        <h1 className="font-display font-bold leading-tight"
+          style={{ fontSize: 'clamp(1.5rem, 2.5vw, 2rem)', color: 'var(--color-text)', letterSpacing: '-0.02em' }}>
+          Statistiques
+        </h1>
+        <p className="text-sm mt-1" style={{ color: 'var(--color-text-secondary)' }}>
+          Performance de {properties.length === 0 ? 'vos biens' : `vos ${properties.length} bien${properties.length > 1 ? 's' : ''}`}
+        </p>
       </div>
 
       {/* ── Section 1: Executive KPIs ──────────────────────────────────────── */}
@@ -286,12 +262,33 @@ export default function AnalyticsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Trend chart — lg:col-span-2 */}
           <Card className="lg:col-span-2">
-            <div className="flex items-start justify-between gap-3 mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
               <div>
                 <p className="text-xs font-semibold" style={{ color: 'var(--color-text)' }}>{trendTitle}</p>
                 <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-muted)' }}>
                   Vues sur les {trendDays} derniers jours
                 </p>
+              </div>
+              {/* Controls live here — they only affect this chart */}
+              <div className="flex items-center gap-2 flex-wrap shrink-0">
+                {properties.length > 0 && (
+                  <select
+                    value={selectedId}
+                    onChange={e => handlePropertyChange(e.target.value)}
+                    className="text-xs font-medium px-3 py-2 rounded-xl appearance-none cursor-pointer"
+                    style={{
+                      background:   'var(--color-bg)',
+                      border:       '1px solid var(--color-border)',
+                      color:        'var(--color-text)',
+                      outlineColor: 'var(--color-primary)',
+                    }}>
+                    <option value="all">Toutes les annonces</option>
+                    {properties.map(p => (
+                      <option key={p.id} value={p.id}>{p.title}</option>
+                    ))}
+                  </select>
+                )}
+                <PeriodToggle value={trendDays} onChange={handlePeriodChange} />
               </div>
             </div>
             {trendLoading ? (
