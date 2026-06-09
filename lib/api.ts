@@ -271,6 +271,7 @@ export type PropertyStats = {
   total_contacts:  number
   conversion_rate: number
   period_stats:    DailyTrend[]
+  top_cities_tn?:  { city_geo: string; views: number }[]
 }
 
 export type OwnerSummary = {
@@ -281,6 +282,7 @@ export type OwnerSummary = {
   top_property?: { id: string; title: string; views: number } | null
   avg_duration_seconds: number | null
   top_countries:        { country: string; views: number }[]
+  top_cities_tn?:       { city_geo: string; views: number }[]
 }
 
 export type SessionStartPayload = {

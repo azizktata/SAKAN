@@ -20,6 +20,17 @@ export function LineChart({ data, showUnique = true, height = 160 }: LineChartPr
     )
   }
 
+  const allZero = data.every((d) => d.views === 0 && d.unique_views === 0)
+  if (allZero) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-1 rounded-xl"
+        style={{ height, background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
+        <p className="text-sm" style={{ color: 'var(--color-muted)' }}>Aucune vue enregistrée</p>
+        <p className="text-xs" style={{ color: 'var(--color-muted)', opacity: 0.7 }}>sur cette période</p>
+      </div>
+    )
+  }
+
   const W = 600
   const H = height
   const padL = 8

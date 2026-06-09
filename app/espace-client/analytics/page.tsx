@@ -106,6 +106,7 @@ export default function AnalyticsPage() {
   const [sortKey,         setSortKey]         = useState<SortKey>('views')
   const [sortAsc,         setSortAsc]         = useState(false)
   const [drawerRow,       setDrawerRow]       = useState<Row | null>(null)
+  const [tablePage,       setTablePage]       = useState(1)
 
   // ── Trend fetch ──────────────────────────────────────────────────────────────
   const fetchTrend = useCallback((id: string | undefined, days: 7 | 30) => {
@@ -183,9 +184,13 @@ export default function AnalyticsPage() {
     return sortAsc ? av - bv : bv - av
   })
 
+  const TABLE_PAGE_SIZE = 10
+  const totalTablePages = Math.ceil(sorted.length / TABLE_PAGE_SIZE)
+  const pagedRows = sorted.slice((tablePage - 1) * TABLE_PAGE_SIZE, tablePage * TABLE_PAGE_SIZE)
+
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortAsc(a => !a)
-    else { setSortKey(key); setSortAsc(false) }
+    else { setSortKey(key); setSortAsc(false); setTablePage(1) }
   }
 
   // ── Type distribution for donut ───────────────────────────────────────────
@@ -211,6 +216,10 @@ export default function AnalyticsPage() {
   // ── Country bar chart ─────────────────────────────────────────────────────
   const countryItems = (summary?.top_countries ?? []).map(({ country, views }) => ({
     label: country,
+    value: views,
+  }))
+  const citiesTnItems = (summary?.top_cities_tn ?? []).map(({ city_geo, views }) => ({
+    label: city_geo,
     value: views,
   }))
 
@@ -326,6 +335,16 @@ export default function AnalyticsPage() {
               </p>
             ) : (
               <BarChart items={countryItems} showPercent defaultColor="var(--color-primary)" />
+            )}
+
+            {/* Tunisian governorate breakdown */}
+            {citiesTnItems.length > 0 && (
+              <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--color-border)' }}>
+                <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--color-muted)' }}>
+                  Gouvernorats (Tunisie)
+                </p>
+                <BarChart items={citiesTnItems} showPercent defaultColor="oklch(42% 0.12 155)" />
+              </div>
             )}
 
             {/* Avg visit duration */}
@@ -446,7 +465,7 @@ export default function AnalyticsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y" style={{ borderColor: 'var(--color-border)' }}>
-                  {sorted.map((row) => (
+                  {pagedRows.map((row) => (
                     <tr key={row.id} onClick={() => setDrawerRow(row)}
                       className="cursor-pointer transition-colors"
                       style={{ background: row.id === topId ? 'oklch(32% 0.08 130 / 0.04)' : 'var(--color-surface)' }}
@@ -500,6 +519,31 @@ export default function AnalyticsPage() {
                 </tbody>
               </table>
               </div>
+              {/* Pagination */}
+              {totalTablePages > 1 && (
+                <div className="flex items-center justify-between px-4 py-3"
+                  style={{ borderTop: '1px solid var(--color-border)', background: 'var(--color-bg)' }}>
+                  <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                    Page {tablePage} / {totalTablePages}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      disabled={tablePage === 1}
+                      onClick={() => setTablePage(p => p - 1)}
+                      className="px-3 py-1.5 text-xs font-medium rounded-lg disabled:opacity-40 transition-colors"
+                      style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }}>
+                      ← Précédent
+                    </button>
+                    <button
+                      disabled={tablePage === totalTablePages}
+                      onClick={() => setTablePage(p => p + 1)}
+                      className="px-3 py-1.5 text-xs font-medium rounded-lg disabled:opacity-40 transition-colors"
+                      style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }}>
+                      Suivant →
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Property type donut */}
