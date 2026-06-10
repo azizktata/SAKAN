@@ -65,6 +65,7 @@ export type PropertyFilters = {
   max_surface?: number
   bedrooms?: number
   amenities?: string   // comma-separated amenity IDs
+  search?: string
   page?: number
   per_page?: number
 }
