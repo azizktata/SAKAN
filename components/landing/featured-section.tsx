@@ -36,7 +36,7 @@ interface FeaturedSectionProps {
 
 export function FeaturedSection({ saleProperties, rentProperties }: FeaturedSectionProps) {
   const [mode, setMode] = useState<'vente' | 'location'>('vente')
-  const properties = (mode === 'vente' ? saleProperties : rentProperties).slice(0, 6)
+  const properties = (mode === 'vente' ? saleProperties : rentProperties).slice(0, 5)
 
   if (saleProperties.length === 0 && rentProperties.length === 0) return null
 

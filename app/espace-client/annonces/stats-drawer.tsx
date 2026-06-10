@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { memo, useEffect, useState } from 'react'
 import { analyticsApi, type PropertyStats, type DailyTrend } from '@/lib/api'
 
 interface Props {
@@ -46,19 +46,24 @@ function MiniBar({ days }: { days: DailyTrend[] }) {
   )
 }
 
-export function StatsDrawer({ propertyId, title, onClose }: Props) {
+export const StatsDrawer = memo(function StatsDrawer({ propertyId, title, onClose }: Props) {
   const [stats, setStats]   = useState<PropertyStats | null>(null)
   const [trend, setTrend]   = useState<DailyTrend[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    let cancelled = false
     Promise.all([
       analyticsApi.propertyStats(propertyId),
       analyticsApi.propertyTrend(propertyId, 7),
     ]).then(([s, t]) => {
+      if (cancelled) return
       setStats(s.data)
       setTrend(t.data)
-    }).catch(() => {}).finally(() => setLoading(false))
+    }).catch(() => {}).finally(() => {
+      if (!cancelled) setLoading(false)
+    })
+    return () => { cancelled = true }
   }, [propertyId])
 
   return (
@@ -130,4 +135,4 @@ export function StatsDrawer({ propertyId, title, onClose }: Props) {
       </div>
     </div>
   )
-}
+})

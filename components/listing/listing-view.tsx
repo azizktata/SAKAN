@@ -283,6 +283,8 @@ export function ListingView() {
   const [minSurface,  setMinSurface]  = useState(() => searchParams.get('minSurface') ?? '')
   const [maxSurface,  setMaxSurface]  = useState(() => searchParams.get('maxSurface') ?? '')
   const [bedrooms,    setBedrooms]    = useState(() => Number(searchParams.get('bedrooms') ?? '0'))
+  const [search,      setSearch]      = useState(() => searchParams.get('search') ?? '')
+  const [searchInput, setSearchInput] = useState(() => searchParams.get('search') ?? '')
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [page,        setPage]        = useState(1)
   const [hoveredId,   setHoveredId]   = useState<string | null>(null)
@@ -330,6 +332,9 @@ export function ListingView() {
     setMaxSurface(searchParams.get('maxSurface') ?? '')
     setBedrooms(Number(searchParams.get('bedrooms') ?? '0'))
     setSelectedAmenities((searchParams.get('amenities') ?? '').split(',').filter(Boolean))
+    const s = searchParams.get('search') ?? ''
+    setSearch(s)
+    setSearchInput(s)
     setPage(1)
   }, [searchParams])
 
@@ -354,6 +359,7 @@ export function ListingView() {
         max_surface:      maxSurface ? Number(maxSurface) : undefined,
         bedrooms:         bedrooms > 0 ? bedrooms : undefined,
         amenities:        selectedAmenities.length > 0 ? selectedAmenities.join(',') : undefined,
+        search:           search || undefined,
         page,
         per_page:         PER_PAGE,
       })
@@ -386,7 +392,7 @@ export function ListingView() {
     }, 300)
 
     return () => { cancelled = true; clearTimeout(timer) }
-  }, [mode, type, locationId, minPrice, maxPrice, minSurface, maxSurface, bedrooms, selectedAmenities, page])
+  }, [mode, type, locationId, minPrice, maxPrice, minSurface, maxSurface, bedrooms, selectedAmenities, search, page])
 
   // Fetch ALL matching properties for map pins (no pagination)
   useEffect(() => {
@@ -436,6 +442,7 @@ export function ListingView() {
     mode !== 'tous' && (mode === 'vente' ? 'Vente' : 'Location'),
     type !== 'Tous' && type,
     locationName    && locationName,
+    search          && `"${search}"`,
     minPrice        && `≥ ${fmt(Number(minPrice))} DT`,
     maxPrice        && `≤ ${fmt(Number(maxPrice))} DT`,
     minSurface      && `≥ ${minSurface} m²`,
@@ -446,7 +453,7 @@ export function ListingView() {
 
   function resetAll() {
     setMode('tous'); setType('Tous'); setLocationId('')
-    setMinPrice(''); setMaxPrice(''); setMinSurface(''); setMaxSurface(''); setBedrooms(0); setSelectedAmenities([]); setPage(1)
+    setMinPrice(''); setMaxPrice(''); setMinSurface(''); setMaxSurface(''); setBedrooms(0); setSelectedAmenities([]); setSearch(''); setSearchInput(''); setPage(1)
     router.replace('/logements', { scroll: false })
   }
 
@@ -705,7 +712,7 @@ const modeLabel = mode === 'location' ? 'à louer' : mode === 'vente' ? 'à vend
         <div className="max-w-7xl mx-auto px-6 py-8">
 
           {/* Result count + active chips */}
-          <div className="flex flex-wrap items-center gap-3 mb-6">
+          <div className="flex flex-wrap items-center gap-3 mb-4">
             <h1 className="font-display font-semibold" style={{ fontSize: '1.25rem', color: 'var(--color-text)' }}>
               {loading && properties.length === 0
                 ? 'Recherche en cours…'
@@ -719,6 +726,35 @@ const modeLabel = mode === 'location' ? 'à louer' : mode === 'vente' ? 'à vend
               </span>
             ))}
           </div>
+
+          {/* Title search */}
+          <form
+            onSubmit={(e) => { e.preventDefault(); setSearch(searchInput); setPage(1); updateParams({ search: searchInput }) }}
+            className="flex items-stretch rounded-xl border overflow-hidden mb-6"
+            style={{ borderColor: search ? 'var(--color-primary)' : 'var(--color-border)', background: 'var(--color-surface)', maxWidth: '420px' }}
+          >
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Rechercher par titre…"
+              className="flex-1 text-sm bg-transparent focus:outline-none px-3 py-2.5"
+              style={{ color: 'var(--color-text)' }}
+            />
+            {searchInput && (
+              <button type="button" onClick={() => { setSearchInput(''); setSearch(''); setPage(1); updateParams({ search: null }) }}
+                className="px-2 hover:opacity-70 shrink-0 flex items-center" style={{ color: 'var(--color-muted)' }}>
+                <IconXSmall />
+              </button>
+            )}
+            <button
+              type="submit"
+              className="px-3 shrink-0 flex items-center justify-center transition-colors"
+              style={{ background: 'oklch(42% 0.09 155 / 0.08)', borderLeft: '1px solid var(--color-border)', color: 'var(--color-primary)' }}
+            >
+              <IconSearch />
+            </button>
+          </form>
 
           {loading && properties.length === 0 ? (
             <div className="flex justify-center py-24">

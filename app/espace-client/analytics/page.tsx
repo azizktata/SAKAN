@@ -107,6 +107,7 @@ export default function AnalyticsPage() {
   const [sortAsc,         setSortAsc]         = useState(false)
   const [drawerRow,       setDrawerRow]       = useState<Row | null>(null)
   const [tablePage,       setTablePage]       = useState(1)
+  const [audienceMetric,  setAudienceMetric]  = useState<'views' | 'leads'>('views')
 
   // ── Trend fetch ──────────────────────────────────────────────────────────────
   const fetchTrend = useCallback((id: string | undefined, days: 7 | 30) => {
@@ -272,164 +273,182 @@ export default function AnalyticsPage() {
         </div>
       </section>
 
-      {/* ── Section 2: Visibilité & Trafic ────────────────────────────────── */}
-      <section className="mb-10">
-        <div className="mb-4">
-          <SectionLabel text="Visibilité" />
-          <h2 className="font-display font-semibold text-base" style={{ color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
-            Trafic & origines
-          </h2>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Trend chart — lg:col-span-2 */}
-          <Card className="lg:col-span-2">
-            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
-              <div>
-                <p className="text-xs font-semibold" style={{ color: 'var(--color-text)' }}>{trendTitle}</p>
-                <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-muted)' }}>
-                  Vues sur les {trendDays} derniers jours
-                </p>
-              </div>
-              {/* Controls live here — they only affect this chart */}
-              <div className="flex items-center gap-2 flex-wrap shrink-0">
-                {properties.length > 0 && (
-                  <select
-                    value={selectedId}
-                    onChange={e => handlePropertyChange(e.target.value)}
-                    className="text-xs font-medium px-3 py-2 rounded-xl appearance-none cursor-pointer"
-                    style={{
-                      background:   'var(--color-bg)',
-                      border:       '1px solid var(--color-border)',
-                      color:        'var(--color-text)',
-                      outlineColor: 'var(--color-primary)',
-                    }}>
-                    <option value="all">Toutes les annonces</option>
-                    {properties.map(p => (
-                      <option key={p.id} value={p.id}>{p.title}</option>
-                    ))}
-                  </select>
-                )}
-                <PeriodToggle value={trendDays} onChange={handlePeriodChange} />
-              </div>
+      {/* ── Section 2: Audience ───────────────────────────────────────────── */}
+      {rows.length > 0 && (
+        <section className="mb-10">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <SectionLabel text="Audience" />
+              <h2 className="font-display font-semibold text-base" style={{ color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
+                Répartition des visiteurs
+              </h2>
             </div>
-            {trendLoading ? (
-              <div className="flex justify-center items-center" style={{ height: 160 }}>
-                <div className="w-6 h-6 rounded-full border-2 border-t-transparent animate-spin"
-                  style={{ borderColor: 'var(--color-primary)', borderTopColor: 'transparent' }} />
-              </div>
-            ) : (
-              <LineChart data={trend} height={160} />
-            )}
-          </Card>
+            {/* Vues / Leads toggler */}
+            <div className="flex items-center rounded-xl overflow-hidden shrink-0"
+              style={{ border: '1px solid var(--color-border)', background: 'var(--color-bg)' }}>
+              {(['views', 'leads'] as const).map(m => (
+                <button
+                  key={m}
+                  onClick={() => setAudienceMetric(m)}
+                  className="px-3 py-1.5 text-xs font-semibold transition-colors"
+                  style={{
+                    background: audienceMetric === m ? 'var(--color-primary)' : 'transparent',
+                    color:      audienceMetric === m ? '#fff' : 'var(--color-text-secondary)',
+                  }}
+                >
+                  {m === 'views' ? 'Vues' : 'Leads'}
+                </button>
+              ))}
+            </div>
+          </div>
 
-          {/* Country bar */}
-          <Card>
-            <SectionLabel text="Origines" />
-            <p className="font-semibold text-sm mb-4" style={{ color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
-              Visiteurs par pays
-            </p>
-            {countryItems.length === 0 ? (
-              <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                Données disponibles après le prochain cycle de tracking.
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+            {/* Donut: par type de bien */}
+            <Card>
+              <SectionLabel text="Par type de bien" />
+              <p className="font-semibold text-sm mb-4" style={{ color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
+                {audienceMetric === 'views' ? 'Vues par type' : 'Leads par type'}
               </p>
-            ) : (
-              <BarChart items={countryItems} showPercent defaultColor="var(--color-primary)" />
-            )}
+              {(() => {
+                const typeData = rows.reduce<Record<string, number>>((acc, r) => {
+                  const t = normalizeType(r.property_type)
+                  acc[t] = (acc[t] ?? 0) + (audienceMetric === 'views' ? r.stats.total_views : r.stats.total_contacts)
+                  return acc
+                }, {})
+                const TYPE_COLORS: Record<string, string> = {
+                  Appartement: 'oklch(32% 0.08 130)',
+                  Villa:       'oklch(42% 0.12 155)',
+                  Maison:      'oklch(58% 0.14 45)',
+                  Terrain:     'oklch(68% 0.13 75)',
+                  Commercial:  'oklch(52% 0.10 250)',
+                  Bureau:      'oklch(60% 0.08 300)',
+                  Autre:       'var(--color-muted)',
+                }
+                const slices = Object.entries(typeData)
+                  .filter(([, v]) => v > 0)
+                  .map(([label, value]) => ({ label, value, color: TYPE_COLORS[label] ?? 'var(--color-muted)' }))
+                return slices.length > 0
+                  ? <DonutChart slices={slices} size={100} centerLabel={audienceMetric === 'views' ? 'vues' : 'leads'} />
+                  : <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Aucune donnée enregistrée.</p>
+              })()}
+            </Card>
 
-            {/* Tunisian governorate breakdown */}
-            {citiesTnItems.length > 0 && (
-              <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--color-border)' }}>
-                <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--color-muted)' }}>
-                  Gouvernorats (Tunisie)
-                </p>
-                <BarChart items={citiesTnItems} showPercent defaultColor="oklch(42% 0.12 155)" />
-              </div>
-            )}
+            {/* Donut: par localisation */}
+            <Card>
+              <SectionLabel text="Par localisation" />
+              <p className="font-semibold text-sm mb-4" style={{ color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
+                {audienceMetric === 'views' ? 'Vues par ville' : 'Leads par ville'}
+              </p>
+              {(() => {
+                const locData = rows.reduce<Record<string, number>>((acc, r) => {
+                  const loc = r.location || 'Autre'
+                  acc[loc] = (acc[loc] ?? 0) + (audienceMetric === 'views' ? r.stats.total_views : r.stats.total_contacts)
+                  return acc
+                }, {})
+                const LOCATION_HUES = [130, 155, 45, 75, 250, 300, 200, 30, 180, 340]
+                const slices = Object.entries(locData)
+                  .filter(([, v]) => v > 0)
+                  .sort((a, b) => b[1] - a[1])
+                  .slice(0, 7)
+                  .map(([label, value], i) => ({
+                    label,
+                    value,
+                    color: `oklch(${[42, 52, 58, 65, 48, 60, 55][i % 7]}% ${[0.10, 0.12, 0.14, 0.09, 0.11, 0.08, 0.13][i % 7]} ${LOCATION_HUES[i % 10]})`,
+                  }))
+                return slices.length > 0
+                  ? <DonutChart slices={slices} size={100} centerLabel={audienceMetric === 'views' ? 'vues' : 'leads'} />
+                  : <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Aucune donnée enregistrée.</p>
+              })()}
+            </Card>
 
-            {/* Avg visit duration */}
-            <div className="mt-5 pt-4 flex items-center gap-3"
-              style={{ borderTop: '1px solid var(--color-border)' }}>
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                style={{ background: 'var(--color-surface-warm)', color: 'var(--color-primary)' }}>
-                <IconClock />
-              </div>
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted)' }}>
-                  Durée moy. visite
-                </p>
-                <p className="font-display font-bold tabular-nums text-lg leading-none mt-0.5"
-                  style={{ color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
-                  {fmtDuration(summary?.avg_duration_seconds ?? null)}
-                </p>
-              </div>
-            </div>
-          </Card>
-        </div>
-      </section>
+            {/* Bar: vente vs location */}
+            <Card>
+              <SectionLabel text="Par transaction" />
+              <p className="font-semibold text-sm mb-4" style={{ color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
+                Vente vs Location
+              </p>
+              {(() => {
+                const venteVal = rows.filter(r => r.mode === 'vente').reduce((s, r) => s + (audienceMetric === 'views' ? r.stats.total_views : r.stats.total_contacts), 0)
+                const locVal   = rows.filter(r => r.mode === 'location').reduce((s, r) => s + (audienceMetric === 'views' ? r.stats.total_views : r.stats.total_contacts), 0)
+                if (venteVal + locVal === 0) return <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Aucune donnée.</p>
+                return (
+                  <>
+                    <BarChart
+                      items={[
+                        { label: 'Vente',    value: venteVal, color: 'var(--color-primary)' },
+                        { label: 'Location', value: locVal,   color: 'var(--color-accent)'  },
+                      ]}
+                      showPercent
+                    />
+                    <div className="mt-5 pt-4 space-y-2" style={{ borderTop: '1px solid var(--color-border)' }}>
+                      <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--color-muted)' }}>
+                        Total
+                      </p>
+                      {[
+                        { label: 'Vente',    value: venteVal, color: 'var(--color-primary)' },
+                        { label: 'Location', value: locVal,   color: 'var(--color-accent)'  },
+                      ].map(({ label, value, color }) => (
+                        <div key={label} className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full" style={{ background: color }} />
+                            <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{label}</span>
+                          </div>
+                          <span className="text-xs font-semibold tabular-nums" style={{ color: 'var(--color-text)' }}>{fmt(value)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )
+              })()}
+            </Card>
 
-      {/* ── Section 3: Leads & Conversions ───────────────────────────────── */}
+            {/* Bar: top biens classement */}
+            <Card className="lg:col-span-2">
+              <SectionLabel text="Classement" />
+              <p className="font-semibold text-sm mb-4" style={{ color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
+                {audienceMetric === 'views' ? 'Top biens par nombre de vues' : 'Top biens par nombre de leads'}
+              </p>
+              {(() => {
+                const ranked = [...rows]
+                  .sort((a, b) => (audienceMetric === 'views' ? b.stats.total_views - a.stats.total_views : b.stats.total_contacts - a.stats.total_contacts))
+                  .slice(0, 6)
+                  .map(r => ({ label: r.title.slice(0, 28), value: audienceMetric === 'views' ? r.stats.total_views : r.stats.total_contacts }))
+                return ranked.some(r => r.value > 0)
+                  ? <BarChart items={ranked} showPercent defaultColor="var(--color-primary)" />
+                  : <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Aucune donnée.</p>
+              })()}
+            </Card>
+
+            {/* Bar: par tranche de prix */}
+            <Card>
+              <SectionLabel text="Prix" />
+              <p className="font-semibold text-sm mb-4" style={{ color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
+                {audienceMetric === 'views' ? 'Vues par tranche de prix' : 'Leads par tranche de prix'}
+              </p>
+              {(() => {
+                const brackets: [string, (p: number) => boolean][] = [
+                  ['< 150k',   p => p < 150_000],
+                  ['150–350k', p => p >= 150_000 && p < 350_000],
+                  ['350–700k', p => p >= 350_000 && p < 700_000],
+                  ['> 700k',   p => p >= 700_000],
+                ]
+                const items = brackets.map(([label, test]) => ({
+                  label,
+                  value: rows.filter(r => test(r.price)).reduce((s, r) => s + (audienceMetric === 'views' ? r.stats.total_views : r.stats.total_contacts), 0),
+                })).filter(i => i.value > 0)
+                return items.length > 0
+                  ? <BarChart items={items} showPercent defaultColor="oklch(68% 0.13 75)" />
+                  : <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Aucune vue enregistrée.</p>
+              })()}
+            </Card>
+
+          </div>
+        </section>
+      )}
+
+      {/* ── Section 3: Performance des biens ─────────────────────────────── */}
       <section className="mb-10">
-        <div className="mb-4">
-          <SectionLabel text="Conversion" />
-          <h2 className="font-display font-semibold text-base" style={{ color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
-            Leads & entonnoir
-          </h2>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* Funnel */}
-          <Card>
-            <SectionLabel text="Entonnoir de conversion" />
-            <p className="font-semibold text-sm mb-5" style={{ color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
-              Vues → Contacts
-            </p>
-            <FunnelChart steps={[
-              { label: 'Vues totales',   value: summary?.total_views        ?? 0 },
-              { label: 'Vues uniques',   value: summary?.total_unique_views ?? 0 },
-              { label: 'Contacts',       value: summary?.total_contacts     ?? 0 },
-            ]} />
-          </Card>
-
-          {/* Leads KPI + per-property breakdown */}
-          <Card>
-            <SectionLabel text="Contacts" />
-            <p className="font-semibold text-sm mb-4" style={{ color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
-              Répartition des contacts
-            </p>
-            {rows.length === 0 ? (
-              <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Aucun bien publié.</p>
-            ) : (
-              <>
-                {/* Total highlight */}
-                <div className="flex items-baseline gap-2 mb-4">
-                  <span className="font-display font-bold tabular-nums"
-                    style={{ fontSize: 'clamp(1.75rem, 3vw, 2.25rem)', color: 'var(--color-text)', letterSpacing: '-0.02em' }}>
-                    {thisMonthContacts}
-                  </span>
-                  <span className="text-sm" style={{ color: 'var(--color-muted)' }}>contact{thisMonthContacts !== 1 ? 's' : ''} total</span>
-                </div>
-                {/* Per-property bar */}
-                <BarChart
-                  items={rows
-                    .filter(r => r.stats.total_contacts > 0)
-                    .sort((a, b) => b.stats.total_contacts - a.stats.total_contacts)
-                    .slice(0, 5)
-                    .map(r => ({ label: r.title.slice(0, 20), value: r.stats.total_contacts }))}
-                  defaultColor="var(--color-accent)"
-                  showPercent
-                />
-                {rows.every(r => r.stats.total_contacts === 0) && (
-                  <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Aucun contact reçu pour le moment.</p>
-                )}
-              </>
-            )}
-          </Card>
-        </div>
-      </section>
-
-      {/* ── Section 4: Performance des biens ─────────────────────────────── */}
-      <section>
         <div className="mb-4">
           <SectionLabel text="Biens" />
           <h2 className="font-display font-semibold text-base" style={{ color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
@@ -546,178 +565,225 @@ export default function AnalyticsPage() {
               )}
             </div>
 
-            {/* Property type donut */}
-            <Card>
-              <SectionLabel text="Répartition" />
-              <p className="font-semibold text-sm mb-5" style={{ color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
-                Types de biens
-              </p>
-              {donutSlices.length === 0 ? (
-                <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Aucune donnée.</p>
-              ) : (
-                <DonutChart slices={donutSlices} size={104} />
-              )}
-            </Card>
+            {/* Right column: 3 donuts stacked */}
+            <div className="flex flex-col gap-4">
+
+              {/* Property type donut */}
+              <Card>
+                <SectionLabel text="Répartition" />
+                <p className="font-semibold text-sm mb-5" style={{ color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
+                  Types de biens
+                </p>
+                {donutSlices.length === 0 ? (
+                  <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Aucune donnée.</p>
+                ) : (
+                  <DonutChart slices={donutSlices} size={104} />
+                )}
+              </Card>
+
+              {/* Location donut */}
+              <Card>
+                <SectionLabel text="Répartition" />
+                <p className="font-semibold text-sm mb-5" style={{ color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
+                  Par localisation
+                </p>
+                {(() => {
+                  const LOCATION_HUES = [130, 155, 45, 75, 250, 300, 200]
+                  const locCounts = rows.reduce<Record<string, number>>((acc, r) => {
+                    const loc = r.location || 'Autre'
+                    acc[loc] = (acc[loc] ?? 0) + 1
+                    return acc
+                  }, {})
+                  const slices = Object.entries(locCounts)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 7)
+                    .map(([label, value], i) => ({
+                      label,
+                      value,
+                      color: `oklch(${[42, 52, 58, 65, 48, 60, 55][i % 7]}% ${[0.10, 0.12, 0.14, 0.09, 0.11, 0.08, 0.13][i % 7]} ${LOCATION_HUES[i % 7]})`,
+                    }))
+                  return slices.length > 0
+                    ? <DonutChart slices={slices} size={104} centerLabel="biens" />
+                    : <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Aucune donnée.</p>
+                })()}
+              </Card>
+
+              {/* Vente vs Location donut */}
+              <Card>
+                <SectionLabel text="Répartition" />
+                <p className="font-semibold text-sm mb-5" style={{ color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
+                  Vente vs Location
+                </p>
+                {(() => {
+                  const venteCount = rows.filter(r => r.mode === 'vente').length
+                  const locCount   = rows.filter(r => r.mode === 'location').length
+                  if (venteCount + locCount === 0) return <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Aucune donnée.</p>
+                  return (
+                    <DonutChart
+                      slices={[
+                        { label: 'Vente',    value: venteCount, color: 'var(--color-primary)' },
+                        { label: 'Location', value: locCount,   color: 'var(--color-accent)'  },
+                      ]}
+                      size={104}
+                      centerLabel="biens"
+                    />
+                  )
+                })()}
+              </Card>
+
+            </div>
           </div>
         )}
       </section>
 
-      {/* ── Section 5: Audience & Répartition ────────────────────────────── */}
-      {rows.length > 0 && (
-        <section className="mt-10">
-          <div className="mb-4">
-            <SectionLabel text="Audience" />
-            <h2 className="font-display font-semibold text-base" style={{ color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
-              Répartition des visiteurs
-            </h2>
-          </div>
+      {/* ── Section 4: Visibilité & Trafic ────────────────────────────────── */}
+      <section className="mb-10">
+        <div className="mb-4">
+          <SectionLabel text="Visibilité" />
+          <h2 className="font-display font-semibold text-base" style={{ color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
+            Trafic & origines
+          </h2>
+        </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Trend chart — lg:col-span-2 */}
+          <Card className="lg:col-span-2">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
+              <div>
+                <p className="text-xs font-semibold" style={{ color: 'var(--color-text)' }}>{trendTitle}</p>
+                <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-muted)' }}>
+                  Vues sur les {trendDays} derniers jours
+                </p>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap shrink-0">
+                {properties.length > 0 && (
+                  <select
+                    value={selectedId}
+                    onChange={e => handlePropertyChange(e.target.value)}
+                    className="text-xs font-medium px-3 py-2 rounded-xl appearance-none cursor-pointer"
+                    style={{
+                      background:   'var(--color-bg)',
+                      border:       '1px solid var(--color-border)',
+                      color:        'var(--color-text)',
+                      outlineColor: 'var(--color-primary)',
+                    }}>
+                    <option value="all">Toutes les annonces</option>
+                    {properties.map(p => (
+                      <option key={p.id} value={p.id}>{p.title}</option>
+                    ))}
+                  </select>
+                )}
+                <PeriodToggle value={trendDays} onChange={handlePeriodChange} />
+              </div>
+            </div>
+            {trendLoading ? (
+              <div className="flex justify-center items-center" style={{ height: 160 }}>
+                <div className="w-6 h-6 rounded-full border-2 border-t-transparent animate-spin"
+                  style={{ borderColor: 'var(--color-primary)', borderTopColor: 'transparent' }} />
+              </div>
+            ) : (
+              <LineChart data={trend} height={160} />
+            )}
+          </Card>
 
-            {/* Donut: vues par type de bien */}
-            <Card>
-              <SectionLabel text="Par type de bien" />
-              <p className="font-semibold text-sm mb-4" style={{ color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
-                Vues par type
+          {/* Country bar */}
+          <Card>
+            <SectionLabel text="Origines" />
+            <p className="font-semibold text-sm mb-4" style={{ color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
+              Visiteurs par pays
+            </p>
+            {countryItems.length === 0 ? (
+              <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                Données disponibles après le prochain cycle de tracking.
               </p>
-              {(() => {
-                const typeViews = rows.reduce<Record<string, number>>((acc, r) => {
-                  const t = normalizeType(r.property_type)
-                  acc[t] = (acc[t] ?? 0) + r.stats.total_views
-                  return acc
-                }, {})
-                const TYPE_COLORS: Record<string, string> = {
-                  Appartement: 'oklch(32% 0.08 130)',
-                  Villa:       'oklch(42% 0.12 155)',
-                  Maison:      'oklch(58% 0.14 45)',
-                  Terrain:     'oklch(68% 0.13 75)',
-                  Commercial:  'oklch(52% 0.10 250)',
-                  Bureau:      'oklch(60% 0.08 300)',
-                  Autre:       'var(--color-muted)',
-                }
-                const slices = Object.entries(typeViews)
-                  .filter(([, v]) => v > 0)
-                  .map(([label, value]) => ({ label, value, color: TYPE_COLORS[label] ?? 'var(--color-muted)' }))
-                return slices.length > 0
-                  ? <DonutChart slices={slices} size={100} centerLabel="vues" />
-                  : <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Aucune vue enregistrée.</p>
-              })()}
-            </Card>
+            ) : (
+              <BarChart items={countryItems} showPercent defaultColor="var(--color-primary)" />
+            )}
 
-            {/* Donut: vues par localisation */}
-            <Card>
-              <SectionLabel text="Par localisation" />
-              <p className="font-semibold text-sm mb-4" style={{ color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
-                Vues par ville
-              </p>
-              {(() => {
-                const locViews = rows.reduce<Record<string, number>>((acc, r) => {
-                  const loc = r.location || 'Autre'
-                  acc[loc] = (acc[loc] ?? 0) + r.stats.total_views
-                  return acc
-                }, {})
-                const LOCATION_HUES = [130, 155, 45, 75, 250, 300, 200, 30, 180, 340]
-                const slices = Object.entries(locViews)
-                  .filter(([, v]) => v > 0)
-                  .sort((a, b) => b[1] - a[1])
-                  .slice(0, 7)
-                  .map(([label, value], i) => ({
-                    label,
-                    value,
-                    color: `oklch(${[42, 52, 58, 65, 48, 60, 55][i % 7]}% ${[0.10, 0.12, 0.14, 0.09, 0.11, 0.08, 0.13][i % 7]} ${LOCATION_HUES[i % 10]})`,
-                  }))
-                return slices.length > 0
-                  ? <DonutChart slices={slices} size={100} centerLabel="vues" />
-                  : <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Aucune vue enregistrée.</p>
-              })()}
-            </Card>
+            {citiesTnItems.length > 0 && (
+              <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--color-border)' }}>
+                <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--color-muted)' }}>
+                  Gouvernorats (Tunisie)
+                </p>
+                <BarChart items={citiesTnItems} showPercent defaultColor="oklch(42% 0.12 155)" />
+              </div>
+            )}
 
-            {/* Bar chart: vues par transaction (vente vs location) */}
-            <Card>
-              <SectionLabel text="Par transaction" />
-              <p className="font-semibold text-sm mb-4" style={{ color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
-                Vente vs Location
-              </p>
-              {(() => {
-                const venteViews  = rows.filter(r => r.mode === 'vente').reduce((s, r) => s + r.stats.total_views, 0)
-                const locViews    = rows.filter(r => r.mode === 'location').reduce((s, r) => s + r.stats.total_views, 0)
-                const totalTx     = venteViews + locViews
-                if (totalTx === 0) return <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Aucune donnée.</p>
-                return (
-                  <>
-                    <BarChart
-                      items={[
-                        { label: 'Vente',    value: venteViews, color: 'var(--color-primary)' },
-                        { label: 'Location', value: locViews,   color: 'var(--color-accent)'  },
-                      ]}
-                      showPercent
-                    />
-                    {/* Vente vs Location donut-style visual below */}
-                    <div className="mt-5 pt-4 space-y-2" style={{ borderTop: '1px solid var(--color-border)' }}>
-                      <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--color-muted)' }}>
-                        Vues totales
-                      </p>
-                      {[
-                        { label: 'Vente',    value: venteViews,  color: 'var(--color-primary)' },
-                        { label: 'Location', value: locViews,    color: 'var(--color-accent)'  },
-                      ].map(({ label, value, color }) => (
-                        <div key={label} className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full" style={{ background: color }} />
-                            <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{label}</span>
-                          </div>
-                          <span className="text-xs font-semibold tabular-nums" style={{ color: 'var(--color-text)' }}>{fmt(value)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )
-              })()}
-            </Card>
+            <div className="mt-5 pt-4 flex items-center gap-3"
+              style={{ borderTop: '1px solid var(--color-border)' }}>
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                style={{ background: 'var(--color-surface-warm)', color: 'var(--color-primary)' }}>
+                <IconClock />
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted)' }}>
+                  Durée moy. visite
+                </p>
+                <p className="font-display font-bold tabular-nums text-lg leading-none mt-0.5"
+                  style={{ color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
+                  {fmtDuration(summary?.avg_duration_seconds ?? null)}
+                </p>
+              </div>
+            </div>
+          </Card>
+        </div>
+      </section>
 
-            {/* Bar chart: top biens par vues (horizontal ranking) */}
-            <Card className="lg:col-span-2">
-              <SectionLabel text="Classement" />
-              <p className="font-semibold text-sm mb-4" style={{ color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
-                Top biens par nombre de vues
-              </p>
-              {(() => {
-                const ranked = [...rows]
-                  .sort((a, b) => b.stats.total_views - a.stats.total_views)
-                  .slice(0, 6)
-                  .map(r => ({ label: r.title.slice(0, 28), value: r.stats.total_views }))
-                return ranked.length > 0
-                  ? <BarChart items={ranked} showPercent defaultColor="var(--color-primary)" />
-                  : <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Aucune donnée.</p>
-              })()}
-            </Card>
+      {/* ── Section 5: Conversion ────────────────────────────────────────── */}
+      <section className="mb-10">
+        <div className="mb-4">
+          <SectionLabel text="Conversion" />
+          <h2 className="font-display font-semibold text-base" style={{ color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
+            Leads & entonnoir
+          </h2>
+        </div>
 
-            {/* Price range bar chart */}
-            <Card>
-              <SectionLabel text="Prix" />
-              <p className="font-semibold text-sm mb-4" style={{ color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
-                Vues par tranche de prix
-              </p>
-              {(() => {
-                const brackets: [string, (p: number) => boolean][] = [
-                  ['< 150k',       p => p < 150_000],
-                  ['150–350k',     p => p >= 150_000 && p < 350_000],
-                  ['350–700k',     p => p >= 350_000 && p < 700_000],
-                  ['> 700k',       p => p >= 700_000],
-                ]
-                const items = brackets.map(([label, test]) => ({
-                  label,
-                  value: rows.filter(r => test(r.price)).reduce((s, r) => s + r.stats.total_views, 0),
-                })).filter(i => i.value > 0)
-                return items.length > 0
-                  ? <BarChart items={items} showPercent defaultColor="oklch(68% 0.13 75)" />
-                  : <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Aucune vue enregistrée.</p>
-              })()}
-            </Card>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Card>
+            <SectionLabel text="Entonnoir de conversion" />
+            <p className="font-semibold text-sm mb-5" style={{ color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
+              Vues → Contacts
+            </p>
+            <FunnelChart steps={[
+              { label: 'Vues totales',   value: summary?.total_views        ?? 0 },
+              { label: 'Vues uniques',   value: summary?.total_unique_views ?? 0 },
+              { label: 'Contacts',       value: summary?.total_contacts     ?? 0 },
+            ]} />
+          </Card>
 
-          </div>
-        </section>
-      )}
+          <Card>
+            <SectionLabel text="Contacts" />
+            <p className="font-semibold text-sm mb-4" style={{ color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
+              Répartition des contacts
+            </p>
+            {rows.length === 0 ? (
+              <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Aucun bien publié.</p>
+            ) : (
+              <>
+                <div className="flex items-baseline gap-2 mb-4">
+                  <span className="font-display font-bold tabular-nums"
+                    style={{ fontSize: 'clamp(1.75rem, 3vw, 2.25rem)', color: 'var(--color-text)', letterSpacing: '-0.02em' }}>
+                    {thisMonthContacts}
+                  </span>
+                  <span className="text-sm" style={{ color: 'var(--color-muted)' }}>contact{thisMonthContacts !== 1 ? 's' : ''} total</span>
+                </div>
+                <BarChart
+                  items={rows
+                    .filter(r => r.stats.total_contacts > 0)
+                    .sort((a, b) => b.stats.total_contacts - a.stats.total_contacts)
+                    .slice(0, 5)
+                    .map(r => ({ label: r.title.slice(0, 20), value: r.stats.total_contacts }))}
+                  defaultColor="var(--color-accent)"
+                  showPercent
+                />
+                {rows.every(r => r.stats.total_contacts === 0) && (
+                  <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Aucun contact reçu pour le moment.</p>
+                )}
+              </>
+            )}
+          </Card>
+        </div>
+      </section>
 
       {/* ── Stats drawer ──────────────────────────────────────────────────── */}
       {drawerRow && (
@@ -767,15 +833,9 @@ export default function AnalyticsPage() {
             {/* Trend chart in drawer */}
             <div className="px-5 pb-6 flex-1">
               <p className="text-[10px] font-semibold uppercase tracking-widest mb-4" style={{ color: 'var(--color-muted)' }}>
-                Vues — {trendDays} derniers jours
+                Vues — 30 derniers jours
               </p>
-              {drawerRow.stats.period_stats && drawerRow.stats.period_stats.length > 0 ? (
-                <LineChart data={drawerRow.stats.period_stats} height={140} />
-              ) : (
-                <p className="text-xs py-4" style={{ color: 'var(--color-text-secondary)' }}>
-                  Données disponibles après le premier cycle d&apos;agrégation.
-                </p>
-              )}
+              <LineChart data={drawerRow.stats.period_stats ?? []} height={140} />
             </div>
           </div>
         </div>

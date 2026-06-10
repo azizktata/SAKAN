@@ -35,13 +35,17 @@ interface Props {
   stats?:         PropertyCardStats
   onDelete?:      (id: string) => void
   onToggleStatus?: (id: string, status: 'published' | 'draft') => void
+  onMarkClosed?:  (id: string, status: 'sold' | 'rented') => void
   onViewStats?:   (id: string) => void
 }
 
-export function PropertyCardManage({ property, stats, onDelete, onToggleStatus, onViewStats }: Props) {
+export function PropertyCardManage({ property, stats, onDelete, onToggleStatus, onMarkClosed, onViewStats }: Props) {
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [closedMenu, setClosedMenu]       = useState(false)
   const meta = STATUS_META[property.status]
   const canToggle = property.status === 'published' || property.status === 'draft'
+  const canMarkClosed = property.status === 'published'
+  const canRestore = property.status === 'sold' || property.status === 'rented'
 
   return (
     <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
@@ -115,6 +119,50 @@ export function PropertyCardManage({ property, stats, onDelete, onToggleStatus, 
           >
             {property.status === 'published' ? 'Dépublier' : 'Publier'}
           </button>
+        )}
+
+        {canRestore && (
+          <button
+            onClick={() => onToggleStatus?.(property.id, 'draft')}
+            className="flex-1 py-2 rounded-xl border text-xs font-semibold transition-colors"
+            style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)', background: 'oklch(42% 0.09 155 / 0.06)' }}
+          >
+            Remettre en ligne
+          </button>
+        )}
+
+        {canMarkClosed && (
+          <div className="relative">
+            <button
+              onClick={() => setClosedMenu(v => !v)}
+              title="Marquer comme vendu ou loué"
+              className="w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 transition-colors"
+              style={{ borderColor: 'var(--color-border)', color: 'var(--color-accent)' }}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </button>
+            {closedMenu && (
+              <div className="absolute bottom-full right-0 mb-1 rounded-xl shadow-lg overflow-hidden z-10"
+                style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', minWidth: '130px' }}>
+                <button
+                  onClick={() => { onMarkClosed?.(property.id, 'sold'); setClosedMenu(false) }}
+                  className="w-full text-left px-3 py-2.5 text-xs font-medium transition-colors hover:bg-[oklch(98%_0.006_155)]"
+                  style={{ color: 'var(--color-text)' }}
+                >
+                  ✓ Marquer Vendu
+                </button>
+                <button
+                  onClick={() => { onMarkClosed?.(property.id, 'rented'); setClosedMenu(false) }}
+                  className="w-full text-left px-3 py-2.5 text-xs font-medium transition-colors hover:bg-[oklch(98%_0.006_155)]"
+                  style={{ color: 'var(--color-text)', borderTop: '1px solid var(--color-border)' }}
+                >
+                  ✓ Marquer Loué
+                </button>
+              </div>
+            )}
+          </div>
         )}
 
         {!confirmDelete ? (

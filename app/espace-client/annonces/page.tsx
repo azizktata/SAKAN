@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { PropertyCardManage, type ManagedProperty, type PropertyCardStats } from '@/components/espace-client/property-card-manage'
 import { propertiesApi, analyticsApi, type PropertyStats } from '@/lib/api'
 import { StatsDrawer } from './stats-drawer'
@@ -28,10 +28,18 @@ export default function AnnoncesPage() {
   const [statsMap, setStatsMap]     = useState<Record<string, PropertyCardStats>>({})
   const [loading, setLoading]       = useState(true)
   const [drawerOpen, setDrawerOpen] = useState<{ id: string; title: string } | null>(null)
+  const closeDrawer = useCallback(() => setDrawerOpen(null), [])
+  const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
+
+  // Reset to page 1 when search changes
+  useEffect(() => { setPage(1) }, [search])
   const PAGE_SIZE = 9
-  const totalPages = Math.ceil(properties.length / PAGE_SIZE)
-  const pagedProperties = properties.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const filtered = search.trim()
+    ? properties.filter((p) => p.title.toLowerCase().includes(search.toLowerCase()))
+    : properties
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
+  const pagedProperties = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   useEffect(() => {
     propertiesApi.myList()
@@ -71,22 +79,53 @@ export default function AnnoncesPage() {
     setProperties((prev) => prev.map((p) => p.id === id ? { ...p, status } : p))
   }
 
+  function handleMarkClosed(id: string, status: 'sold' | 'rented') {
+    propertiesApi.update(id, { status }).catch(() => {})
+    setProperties((prev) => prev.map((p) => p.id === id ? { ...p, status } : p))
+  }
+
   return (
     <main className="flex-1 px-4 sm:px-6 py-6 sm:py-8 max-w-6xl w-full">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
         <div>
           <h1 className="font-display font-semibold text-2xl" style={{ color: 'var(--color-text)' }}>
             Mes annonces
           </h1>
           <p className="text-sm mt-1" style={{ color: 'var(--color-text-secondary)' }}>
-            {properties.length} bien{properties.length !== 1 ? 's' : ''}
+            {search ? `${filtered.length} / ${properties.length}` : properties.length} bien{properties.length !== 1 ? 's' : ''}
           </p>
         </div>
-        <Link href="?publish=open"
-          className="px-5 py-2.5 rounded-full text-sm font-semibold text-white"
-          style={{ background: 'var(--color-primary)' }}>
-          + Publier
-        </Link>
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Search bar */}
+          <div className="flex items-center gap-0 rounded-xl border overflow-hidden"
+            style={{ borderColor: search ? 'var(--color-primary)' : 'var(--color-border)', background: 'var(--color-surface)', minWidth: '220px' }}>
+            <span className="pl-3 shrink-0">
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ color: 'var(--color-muted)' }}>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 104.5 4.5a7.5 7.5 0 0012.15 12.15z" />
+              </svg>
+            </span>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Rechercher par titre…"
+              className="flex-1 text-sm bg-transparent focus:outline-none px-2.5 py-2"
+              style={{ color: 'var(--color-text)', minWidth: 0 }}
+            />
+            {search && (
+              <button onClick={() => setSearch('')} className="px-2 hover:opacity-70 shrink-0" style={{ color: 'var(--color-muted)' }}>
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+          <Link href="?publish=open"
+            className="px-5 py-2.5 rounded-full text-sm font-semibold text-white shrink-0"
+            style={{ background: 'var(--color-primary)' }}>
+            + Publier
+          </Link>
+        </div>
       </div>
 
       {loading ? (
@@ -109,6 +148,15 @@ export default function AnnoncesPage() {
             Publier un bien
           </Link>
         </div>
+      ) : pagedProperties.length === 0 && search ? (
+        <div className="text-center py-20">
+          <p className="font-display font-semibold mb-2" style={{ color: 'var(--color-text)' }}>
+            Aucun résultat pour &ldquo;{search}&rdquo;
+          </p>
+          <button onClick={() => setSearch('')} className="text-sm underline" style={{ color: 'var(--color-primary)' }}>
+            Effacer la recherche
+          </button>
+        </div>
       ) : (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -119,6 +167,7 @@ export default function AnnoncesPage() {
                 stats={statsMap[p.id]}
                 onDelete={handleDelete}
                 onToggleStatus={handleToggleStatus}
+                onMarkClosed={handleMarkClosed}
                 onViewStats={(id) => setDrawerOpen({ id, title: p.title })}
               />
             ))}
@@ -154,7 +203,7 @@ export default function AnnoncesPage() {
         <StatsDrawer
           propertyId={drawerOpen.id}
           title={drawerOpen.title}
-          onClose={() => setDrawerOpen(null)}
+          onClose={closeDrawer}
         />
       )}
     </main>
