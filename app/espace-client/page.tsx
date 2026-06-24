@@ -81,8 +81,8 @@ export default function EspaceClientPage() {
       setContacts(contactsRes.data.data)
       setSummary(sum)
 
-      // Fetch per-property stats for sparklines
-      props.forEach(p => {
+      // Fetch stats only for the 4 properties shown in "Recent properties"
+      props.slice(0, 4).forEach(p => {
         analyticsApi.propertyStats(p.id).then(r => {
           setStatsMap(prev => ({ ...prev, [p.id]: r.data }))
         }).catch(() => {})
@@ -273,9 +273,11 @@ export default function EspaceClientPage() {
                   const cover = prop.images?.find(i => i.is_cover) ?? prop.images?.[0]
                   const stats = statsMap[prop.id]
                   return (
-                    <div key={prop.id}
-                      className="flex items-center gap-3 p-3 rounded-2xl"
-                      style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+                    <Link key={prop.id} href={`/logements/${prop.id}`}
+                      className="flex items-center gap-3 p-3 rounded-2xl transition-colors group"
+                      style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--color-primary)' }}
+                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--color-border)' }}>
                       {/* Thumbnail */}
                       <div className="relative w-14 h-14 rounded-xl overflow-hidden shrink-0"
                         style={{ background: 'var(--color-surface-warm)' }}>
@@ -283,7 +285,8 @@ export default function EspaceClientPage() {
                       </div>
                       {/* Info */}
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-sm truncate" style={{ color: 'var(--color-text)' }}>{prop.title}</p>
+                        <p className="font-semibold text-sm truncate transition-colors group-hover:text-[var(--color-primary)]"
+                          style={{ color: 'var(--color-text)' }}>{prop.title}</p>
                         <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--color-muted)' }}>
                           {prop.location?.name ?? prop.address ?? '—'}
                         </p>
@@ -311,7 +314,7 @@ export default function EspaceClientPage() {
                           {s.label}
                         </span>
                       </div>
-                    </div>
+                    </Link>
                   )
                 })}
               </div>

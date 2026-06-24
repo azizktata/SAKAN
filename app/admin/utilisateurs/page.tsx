@@ -4,9 +4,9 @@ import { useState, useEffect, useCallback } from 'react'
 import { adminApi, type User, type UserRole, type AdminCreateUserPayload } from '@/lib/api'
 
 const ROLE_META: Record<UserRole, { label: string; color: string; bg: string }> = {
-  admin:       { label: 'Admin',       color: 'oklch(42% 0.09 155)',      bg: 'oklch(42% 0.09 155 / 0.08)' },
-  agent:       { label: 'Agent',       color: 'oklch(60% 0.1 78)',        bg: 'oklch(68% 0.1 78 / 0.1)' },
-  particulier: { label: 'Particulier', color: 'var(--color-text-secondary)', bg: 'oklch(42% 0.009 155 / 0.06)' },
+  admin:       { label: 'Admin',       color: 'var(--color-primary)',        bg: 'oklch(32% 0.08 130 / 0.1)' },
+  agent:       { label: 'Agent',       color: 'var(--color-accent)',         bg: 'oklch(58% 0.14 45 / 0.12)' },
+  particulier: { label: 'Particulier', color: 'var(--color-text-secondary)', bg: 'oklch(60% 0.014 70 / 0.1)' },
 }
 
 const ROLES: UserRole[] = ['particulier', 'agent', 'admin']
@@ -14,23 +14,22 @@ const ROLES: UserRole[] = ['particulier', 'agent', 'admin']
 const PER_PAGE = 20
 
 export default function AdminUtilisateursPage() {
-  const [users, setUsers]           = useState<User[]>([])
-  const [total, setTotal]           = useState(0)
-  const [lastPage, setLastPage]     = useState(1)
-  const [page, setPage]             = useState(1)
-  const [search, setSearch]         = useState('')
-  const [debouncedSearch, setDebounced] = useState('')
-  const [loading, setLoading]       = useState(true)
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
-  const [changingRole, setChangingRole]   = useState<string | null>(null)
-  const [showCreate, setShowCreate]       = useState(false)
-  const [creating, setCreating]           = useState(false)
-  const [createError, setCreateError]     = useState<string | null>(null)
-  const [newUser, setNewUser]             = useState<AdminCreateUserPayload>({
+  const [users,          setUsers]          = useState<User[]>([])
+  const [total,          setTotal]          = useState(0)
+  const [lastPage,       setLastPage]       = useState(1)
+  const [page,           setPage]           = useState(1)
+  const [search,         setSearch]         = useState('')
+  const [debouncedSearch, setDebounced]     = useState('')
+  const [loading,        setLoading]        = useState(true)
+  const [confirmDelete,  setConfirmDelete]  = useState<string | null>(null)
+  const [changingRole,   setChangingRole]   = useState<string | null>(null)
+  const [showCreate,     setShowCreate]     = useState(false)
+  const [creating,       setCreating]       = useState(false)
+  const [createError,    setCreateError]    = useState<string | null>(null)
+  const [newUser,        setNewUser]        = useState<AdminCreateUserPayload>({
     name: '', email: '', password: '', role: 'particulier',
   })
 
-  // Debounce search
   useEffect(() => {
     const t = setTimeout(() => setDebounced(search), 350)
     return () => clearTimeout(t)
@@ -83,46 +82,53 @@ export default function AdminUtilisateursPage() {
 
   return (
     <main className="flex-1 px-6 py-8 max-w-5xl w-full">
+
+      {/* ── Header ── */}
       <div className="flex items-start justify-between mb-6 gap-4 flex-wrap">
         <div>
-          <h1 className="font-display font-semibold text-2xl" style={{ color: 'var(--color-text)' }}>
+          <p className="text-[10px] font-semibold uppercase tracking-widest mb-0.5" style={{ color: 'var(--color-muted)' }}>
+            Administration
+          </p>
+          <h1 className="font-display font-bold text-2xl" style={{ color: 'var(--color-text)' }}>
             Utilisateurs
           </h1>
           <p className="text-sm mt-1" style={{ color: 'var(--color-text-secondary)' }}>
             {total} compte{total !== 1 ? 's' : ''} enregistré{total !== 1 ? 's' : ''}
           </p>
         </div>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
-          style={{ background: 'var(--color-primary)' }}
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Nouvel utilisateur
-        </button>
-        {/* Search */}
-        <div className="relative">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
-            style={{ color: 'var(--color-muted)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
-          </svg>
-          <input
-            type="text"
-            placeholder="Nom ou email…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 pr-4 py-2 rounded-xl border text-sm focus:outline-none focus:ring-2 w-56"
-            style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text)' }}
-          />
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Search */}
+          <div className="relative">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
+              style={{ color: 'var(--color-muted)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Nom ou email…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 pr-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 w-56"
+              style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
+            />
+          </div>
+          <button
+            onClick={() => setShowCreate(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+            style={{ background: 'var(--color-primary)' }}
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Nouvel utilisateur
+          </button>
         </div>
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
+        <div className="flex justify-center py-16">
+          <div className="w-8 h-8 rounded-full border-2 animate-spin"
             style={{ borderColor: 'var(--color-primary)', borderTopColor: 'transparent' }} />
         </div>
       ) : (
@@ -132,22 +138,22 @@ export default function AdminUtilisateursPage() {
               <thead>
                 <tr style={{ background: 'var(--color-bg)' }}>
                   {['Utilisateur', 'Email', 'Rôle', 'Inscrit', 'Actions'].map((h) => (
-                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
+                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide"
                       style={{ color: 'var(--color-muted)' }}>
                       {h}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody style={{ background: 'var(--color-surface)' }}>
-                {users.map((u, i) => {
+              <tbody className="divide-y" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+                {users.map((u) => {
                   const r = ROLE_META[u.role] ?? ROLE_META.particulier
                   return (
-                    <tr key={u.id} style={{ borderTop: i > 0 ? '1px solid var(--color-border)' : 'none' }}>
+                    <tr key={u.id} className="transition-colors hover:bg-[var(--color-bg)]">
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-2.5">
                           <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center shrink-0 text-sm font-bold"
-                            style={{ background: 'oklch(42% 0.09 155 / 0.1)', color: 'var(--color-primary)' }}>
+                            style={{ background: 'oklch(32% 0.08 130 / 0.1)', color: 'var(--color-primary)' }}>
                             {u.image
                               // eslint-disable-next-line @next/next/no-img-element
                               ? <img src={u.image} alt={u.name} className="w-full h-full object-cover" />
@@ -161,19 +167,17 @@ export default function AdminUtilisateursPage() {
                       <td className="px-4 py-3.5">
                         {changingRole === u.id ? (
                           <div className="flex items-center gap-1.5">
-                            <div className="relative">
-                              <select
-                                defaultValue={u.role}
-                                onChange={(e) => handleRoleChange(u.id, e.target.value as UserRole)}
-                                className="appearance-none text-xs font-semibold px-3 py-1.5 pr-7 rounded-lg border focus:outline-none"
-                                style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text)' }}
-                                autoFocus
-                              >
-                                {ROLES.map((role) => (
-                                  <option key={role} value={role}>{ROLE_META[role].label}</option>
-                                ))}
-                              </select>
-                            </div>
+                            <select
+                              defaultValue={u.role}
+                              onChange={(e) => handleRoleChange(u.id, e.target.value as UserRole)}
+                              className="appearance-none text-xs font-semibold px-3 py-1.5 pr-7 rounded-lg border focus:outline-none"
+                              style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text)' }}
+                              autoFocus
+                            >
+                              {ROLES.map((role) => (
+                                <option key={role} value={role}>{ROLE_META[role].label}</option>
+                              ))}
+                            </select>
                             <button onClick={() => setChangingRole(null)}
                               className="text-xs px-2 py-1.5 rounded-lg border"
                               style={{ borderColor: 'var(--color-border)', color: 'var(--color-muted)' }}>
@@ -220,7 +224,7 @@ export default function AdminUtilisateursPage() {
                 })}
                 {users.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-10 text-center text-sm" style={{ color: 'var(--color-muted)' }}>
+                    <td colSpan={5} className="px-4 py-12 text-center text-sm italic" style={{ color: 'var(--color-muted)' }}>
                       Aucun utilisateur.
                     </td>
                   </tr>
@@ -240,14 +244,14 @@ export default function AdminUtilisateursPage() {
                   disabled={page <= 1}
                   onClick={() => setPage((p) => p - 1)}
                   className="px-4 py-2 rounded-xl text-sm font-medium border transition-colors disabled:opacity-40"
-                  style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
+                  style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)', background: 'var(--color-surface)' }}>
                   Précédent
                 </button>
                 <button
                   disabled={page >= lastPage}
                   onClick={() => setPage((p) => p + 1)}
                   className="px-4 py-2 rounded-xl text-sm font-medium border transition-colors disabled:opacity-40"
-                  style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
+                  style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)', background: 'var(--color-surface)' }}>
                   Suivant
                 </button>
               </div>
@@ -255,7 +259,8 @@ export default function AdminUtilisateursPage() {
           )}
         </>
       )}
-      {/* Create user modal */}
+
+      {/* ── Create user modal ── */}
       {showCreate && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center px-4"
@@ -268,12 +273,19 @@ export default function AdminUtilisateursPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-6">
-              <h2 className="font-display font-semibold text-lg" style={{ color: 'var(--color-text)' }}>
-                Nouvel utilisateur
-              </h2>
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-widest mb-0.5" style={{ color: 'var(--color-muted)' }}>
+                  Administration
+                </p>
+                <h2 className="font-display font-semibold text-lg" style={{ color: 'var(--color-text)' }}>
+                  Nouvel utilisateur
+                </h2>
+              </div>
               <button onClick={() => setShowCreate(false)}
-                className="w-8 h-8 rounded-full flex items-center justify-center"
-                style={{ color: 'var(--color-muted)' }}>
+                className="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
+                style={{ color: 'var(--color-muted)' }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-bg)' }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}>
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -281,45 +293,28 @@ export default function AdminUtilisateursPage() {
             </div>
 
             <form onSubmit={handleCreate} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--color-muted)' }}>
-                  Nom complet
-                </label>
-                <input
-                  type="text" required
-                  value={newUser.name}
-                  onChange={(e) => setNewUser((u) => ({ ...u, name: e.target.value }))}
-                  placeholder="Prénom Nom"
-                  className="w-full rounded-xl border px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2"
-                  style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text)' }}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--color-muted)' }}>
-                  Email
-                </label>
-                <input
-                  type="email" required
-                  value={newUser.email}
-                  onChange={(e) => setNewUser((u) => ({ ...u, email: e.target.value }))}
-                  placeholder="email@exemple.com"
-                  className="w-full rounded-xl border px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2"
-                  style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text)' }}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--color-muted)' }}>
-                  Mot de passe
-                </label>
-                <input
-                  type="password" required minLength={8}
-                  value={newUser.password}
-                  onChange={(e) => setNewUser((u) => ({ ...u, password: e.target.value }))}
-                  placeholder="8 caractères minimum"
-                  className="w-full rounded-xl border px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2"
-                  style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text)' }}
-                />
-              </div>
+              {[
+                { key: 'name',     label: 'Nom complet',    type: 'text',     placeholder: 'Prénom Nom',         required: true },
+                { key: 'email',    label: 'Email',          type: 'email',    placeholder: 'email@exemple.com',  required: true },
+                { key: 'password', label: 'Mot de passe',   type: 'password', placeholder: '8 caractères minimum', required: true },
+              ].map(({ key, label, type, placeholder, required }) => (
+                <div key={key}>
+                  <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--color-muted)' }}>
+                    {label}
+                  </label>
+                  <input
+                    type={type}
+                    required={required}
+                    minLength={key === 'password' ? 8 : undefined}
+                    value={(newUser as Record<string, string>)[key]}
+                    onChange={(e) => setNewUser((u) => ({ ...u, [key]: e.target.value }))}
+                    placeholder={placeholder}
+                    className="w-full rounded-xl border px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2"
+                    style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text)' }}
+                  />
+                </div>
+              ))}
+
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--color-muted)' }}>
                   Rôle
@@ -343,7 +338,7 @@ export default function AdminUtilisateursPage() {
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowCreate(false)}
                   className="flex-1 py-3 rounded-2xl text-sm font-semibold border transition-colors"
-                  style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
+                  style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)', background: 'var(--color-bg)' }}>
                   Annuler
                 </button>
                 <button type="submit" disabled={creating}

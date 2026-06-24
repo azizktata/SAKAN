@@ -16,19 +16,39 @@ type TopFilter = {
   transaction_type: string | null
   property_type: string | null
   location_id: number | null
+  location_name: string | null
   search_count: number
   zero_result_count: number
+  zero_result_pct: number
 }
 
 type ZeroResultLocation = {
   id: number | null
   name: string | null
   zero_result_searches: number
+  total_searches: number
+  failure_rate: number
+}
+
+type TopType = {
+  property_type: string | null
+  search_count: number
+}
+
+type TopCity = {
+  id: number
+  name: string
+  search_count: number
+  zero_result_count: number
+  zero_result_pct: number
 }
 
 type SearchTrends = {
   top_filters: TopFilter[]
   zero_results_by_location: ZeroResultLocation[]
+  top_types: TopType[]
+  top_cities: TopCity[]
+  total_searches: number
   period_days: number
 }
 
@@ -59,17 +79,17 @@ const PROP_LABELS: Record<string, string> = {
 function KpiCard({ label, value }: { label: string; value: string | number }) {
   return (
     <div
-      className="rounded-2xl p-4"
+      className="rounded-2xl p-5"
       style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
     >
       <p
-        className="text-xs font-semibold uppercase tracking-wider mb-1"
+        className="text-[10px] font-semibold uppercase tracking-widest mb-2"
         style={{ color: 'var(--color-muted)' }}
       >
         {label}
       </p>
       <p
-        className="font-display font-bold text-xl tabular-nums"
+        className="font-display font-bold text-2xl tabular-nums"
         style={{ color: 'var(--color-text)' }}
       >
         {value}
@@ -133,7 +153,7 @@ function EmptyRow({ colSpan, message }: { colSpan: number; message: string }) {
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
     <h2
-      className="font-display font-semibold mb-4"
+      className="font-display font-semibold text-base mb-4"
       style={{ color: 'var(--color-text)' }}
     >
       {children}
@@ -228,7 +248,10 @@ export default function AdminAnalyticsPage() {
     <main className="flex-1 px-6 py-8 max-w-5xl w-full">
       {/* 1. Page header */}
       <div className="mb-8">
-        <h1 className="font-display font-semibold text-2xl" style={{ color: 'var(--color-text)' }}>
+        <p className="text-[10px] font-semibold uppercase tracking-widest mb-0.5" style={{ color: 'var(--color-muted)' }}>
+          Administration
+        </p>
+        <h1 className="font-display font-bold text-2xl" style={{ color: 'var(--color-text)' }}>
           Analytics Marché
         </h1>
         <p className="text-sm mt-1" style={{ color: 'var(--color-text-secondary)' }}>
@@ -257,16 +280,16 @@ export default function AdminAnalyticsPage() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-12">
+        <div className="flex justify-center py-16">
           <div
             className="w-8 h-8 rounded-full border-2 animate-spin"
             style={{ borderColor: 'var(--color-primary)', borderTopColor: 'transparent' }}
           />
         </div>
       ) : (
-        <>
+        <div className="space-y-10">
           {/* 3. Market Insights table */}
-          <section className="mb-8">
+          <section>
             <SectionTitle>Insights par ville</SectionTitle>
             <div
               className="rounded-2xl border overflow-hidden"
@@ -274,7 +297,7 @@ export default function AdminAnalyticsPage() {
             >
               <table className="w-full text-sm">
                 <thead>
-                  <tr style={{ background: 'oklch(96% 0.005 155)' }}>
+                  <tr style={{ background: 'var(--color-bg)' }}>
                     <TableHeader>Ville</TableHeader>
                     <TableHeaderRight>Demande</TableHeaderRight>
                     <TableHeaderRight>Attractivité</TableHeaderRight>
@@ -285,8 +308,7 @@ export default function AdminAnalyticsPage() {
                   </tr>
                 </thead>
                 <tbody
-                  className="divide-y"
-                  style={{ background: 'var(--color-surface)' }}
+                  className="divide-y" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
                 >
                   {marketInsights.length === 0 ? (
                     <EmptyRow
@@ -322,7 +344,7 @@ export default function AdminAnalyticsPage() {
           </section>
 
           {/* 4. Geo Breakdown — two sub-tables side by side */}
-          <section className="mb-8">
+          <section>
             <SectionTitle>Répartition géographique</SectionTitle>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               {/* By country */}
@@ -334,7 +356,7 @@ export default function AdminAnalyticsPage() {
                 >
                   <table className="w-full text-sm">
                     <thead>
-                      <tr style={{ background: 'oklch(96% 0.005 155)' }}>
+                      <tr style={{ background: 'var(--color-bg)' }}>
                         <TableHeader>Pays</TableHeader>
                         <TableHeaderRight>Vues</TableHeaderRight>
                         <TableHeaderRight>Visiteurs uniques</TableHeaderRight>
@@ -342,7 +364,7 @@ export default function AdminAnalyticsPage() {
                     </thead>
                     <tbody
                       className="divide-y"
-                      style={{ background: 'var(--color-surface)' }}
+                      style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
                     >
                       {!geoBreakdown || geoBreakdown.by_country.length === 0 ? (
                         <EmptyRow
@@ -372,7 +394,7 @@ export default function AdminAnalyticsPage() {
                 >
                   <table className="w-full text-sm">
                     <thead>
-                      <tr style={{ background: 'oklch(96% 0.005 155)' }}>
+                      <tr style={{ background: 'var(--color-bg)' }}>
                         <TableHeader>Ville</TableHeader>
                         <TableHeader>Pays</TableHeader>
                         <TableHeaderRight>Vues</TableHeaderRight>
@@ -380,7 +402,7 @@ export default function AdminAnalyticsPage() {
                     </thead>
                     <tbody
                       className="divide-y"
-                      style={{ background: 'var(--color-surface)' }}
+                      style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
                     >
                       {!geoBreakdown || geoBreakdown.by_city.length === 0 ? (
                         <EmptyRow
@@ -408,99 +430,210 @@ export default function AdminAnalyticsPage() {
           </section>
 
           {/* 5. Search Trends */}
-          <section className="mb-8">
-            <SectionTitle>Tendances de recherche</SectionTitle>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {/* Top searches */}
-              <div>
-                <SubSectionTitle>Top recherches</SubSectionTitle>
-                <div
-                  className="rounded-2xl border overflow-hidden"
-                  style={{ borderColor: 'var(--color-border)' }}
-                >
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr style={{ background: 'oklch(96% 0.005 155)' }}>
-                        <TableHeader>Transaction</TableHeader>
-                        <TableHeader>Type bien</TableHeader>
-                        <TableHeaderRight>Recherches</TableHeaderRight>
-                        <TableHeaderRight>Sans résultat</TableHeaderRight>
-                      </tr>
-                    </thead>
-                    <tbody
-                      className="divide-y"
-                      style={{ background: 'var(--color-surface)' }}
-                    >
-                      {!searchTrends || searchTrends.top_filters.length === 0 ? (
-                        <EmptyRow colSpan={4} message="Aucune donnée de recherche" />
-                      ) : (
-                        searchTrends.top_filters.map((row, i) => (
-                          <tr key={i}>
-                            <TableCell>
-                              {TX_LABELS[row.transaction_type ?? ''] ?? row.transaction_type ?? '—'}
-                            </TableCell>
-                            <TableCell>
-                              {PROP_LABELS[row.property_type ?? ''] ?? row.property_type ?? '—'}
-                            </TableCell>
-                            <TableCellRight>{row.search_count.toLocaleString('fr-TN')}</TableCellRight>
-                            <TableCellRight>
-                              <span
-                                style={{
-                                  color: row.zero_result_count > 0
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-display font-semibold text-base" style={{ color: 'var(--color-text)' }}>
+                Tendances de recherche
+              </h2>
+              {searchTrends && (
+                <span className="text-xs font-semibold px-3 py-1 rounded-full"
+                  style={{ background: 'oklch(32% 0.08 130 / 0.08)', color: 'var(--color-primary)' }}>
+                  {searchTrends.total_searches.toLocaleString('fr-TN')} recherches — 30j
+                </span>
+              )}
+            </div>
+
+            <div className="space-y-6">
+              {/* Row 1: Top filter combos + Top cities */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {/* Top filter combinations */}
+                <div>
+                  <SubSectionTitle>Top combinaisons de filtres</SubSectionTitle>
+                  <div className="rounded-2xl border overflow-hidden" style={{ borderColor: 'var(--color-border)' }}>
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr style={{ background: 'var(--color-bg)' }}>
+                          <TableHeader>Transaction</TableHeader>
+                          <TableHeader>Type</TableHeader>
+                          <TableHeader>Ville</TableHeader>
+                          <TableHeaderRight>Nb</TableHeaderRight>
+                          <TableHeaderRight>% Échec</TableHeaderRight>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+                        {!searchTrends || searchTrends.top_filters.length === 0 ? (
+                          <EmptyRow colSpan={5} message="Aucune donnée de recherche" />
+                        ) : (
+                          searchTrends.top_filters.map((row, i) => (
+                            <tr key={i} className="hover:bg-[var(--color-bg)] transition-colors">
+                              <TableCell>
+                                {TX_LABELS[row.transaction_type ?? ''] ?? row.transaction_type ?? <span style={{ color: 'var(--color-muted)' }}>Tous</span>}
+                              </TableCell>
+                              <TableCell>
+                                {PROP_LABELS[row.property_type ?? ''] ?? row.property_type ?? <span style={{ color: 'var(--color-muted)' }}>Tous</span>}
+                              </TableCell>
+                              <TableCell>
+                                {row.location_name
+                                  ? <span>{row.location_name}</span>
+                                  : <span style={{ color: 'var(--color-muted)' }}>Toutes</span>}
+                              </TableCell>
+                              <TableCellRight>{row.search_count.toLocaleString('fr-TN')}</TableCellRight>
+                              <TableCellRight>
+                                <span style={{
+                                  color: row.zero_result_pct >= 50
+                                    ? 'oklch(45% 0.18 25)'
+                                    : row.zero_result_pct > 0
                                     ? 'var(--color-accent)'
-                                    : 'var(--color-text)',
-                                }}
-                              >
-                                {row.zero_result_count.toLocaleString('fr-TN')}
-                              </span>
-                            </TableCellRight>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
+                                    : 'var(--color-text-secondary)',
+                                  fontWeight: row.zero_result_pct >= 50 ? 600 : 400,
+                                }}>
+                                  {row.zero_result_pct > 0 ? `${row.zero_result_pct}%` : '—'}
+                                </span>
+                              </TableCellRight>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Top cities by search volume */}
+                <div>
+                  <SubSectionTitle>Villes les plus recherchées</SubSectionTitle>
+                  <div className="rounded-2xl border overflow-hidden" style={{ borderColor: 'var(--color-border)' }}>
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr style={{ background: 'var(--color-bg)' }}>
+                          <TableHeader>Ville</TableHeader>
+                          <TableHeaderRight>Recherches</TableHeaderRight>
+                          <TableHeaderRight>% Échec</TableHeaderRight>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+                        {!searchTrends || searchTrends.top_cities.length === 0 ? (
+                          <EmptyRow colSpan={3} message="Aucune recherche géolocalisée" />
+                        ) : (
+                          searchTrends.top_cities.map((row) => (
+                            <tr key={row.id} className="hover:bg-[var(--color-bg)] transition-colors">
+                              <TableCell><span className="font-medium">{row.name}</span></TableCell>
+                              <TableCellRight>{row.search_count.toLocaleString('fr-TN')}</TableCellRight>
+                              <TableCellRight>
+                                <span style={{
+                                  color: row.zero_result_pct >= 50
+                                    ? 'oklch(45% 0.18 25)'
+                                    : row.zero_result_pct > 0
+                                    ? 'var(--color-accent)'
+                                    : 'var(--color-text-secondary)',
+                                  fontWeight: row.zero_result_pct >= 50 ? 600 : 400,
+                                }}>
+                                  {row.zero_result_pct > 0 ? `${row.zero_result_pct}%` : '—'}
+                                </span>
+                              </TableCellRight>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
 
-              {/* Villes sans résultats */}
-              <div>
-                <SubSectionTitle>Villes sans résultats</SubSectionTitle>
-                <div
-                  className="rounded-2xl border overflow-hidden"
-                  style={{ borderColor: 'var(--color-border)' }}
-                >
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr style={{ background: 'oklch(96% 0.005 155)' }}>
-                        <TableHeader>Ville</TableHeader>
-                        <TableHeaderRight>Recherches sans résultat</TableHeaderRight>
-                      </tr>
-                    </thead>
-                    <tbody
-                      className="divide-y"
-                      style={{ background: 'var(--color-surface)' }}
-                    >
-                      {!searchTrends || searchTrends.zero_results_by_location.length === 0 ? (
-                        <EmptyRow colSpan={2} message="Aucune ville avec demande non satisfaite" />
-                      ) : (
-                        searchTrends.zero_results_by_location.map((row, i) => (
-                          <tr key={row.id ?? i}>
-                            <TableCell>{row.name ?? '—'}</TableCell>
-                            <TableCellRight>
-                              <span style={{ color: 'var(--color-accent)' }}>
-                                {row.zero_result_searches.toLocaleString('fr-TN')}
-                              </span>
-                            </TableCellRight>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
+              {/* Row 2: Zero-result cities + Top types */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {/* Villes sans résultats — named cities only, with failure rate */}
+                <div>
+                  <SubSectionTitle>Villes sans résultats — demande non satisfaite</SubSectionTitle>
+                  <div className="rounded-2xl border overflow-hidden" style={{ borderColor: 'var(--color-border)' }}>
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr style={{ background: 'var(--color-bg)' }}>
+                          <TableHeader>Ville</TableHeader>
+                          <TableHeaderRight>Échecs</TableHeaderRight>
+                          <TableHeaderRight>/ Total</TableHeaderRight>
+                          <TableHeaderRight>Taux</TableHeaderRight>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+                        {!searchTrends || searchTrends.zero_results_by_location.length === 0 ? (
+                          <EmptyRow colSpan={4} message="Aucune demande non satisfaite" />
+                        ) : (
+                          searchTrends.zero_results_by_location.map((row, i) => (
+                            <tr key={row.id ?? i} className="hover:bg-[var(--color-bg)] transition-colors">
+                              <TableCell><span className="font-medium">{row.name}</span></TableCell>
+                              <TableCellRight>
+                                <span style={{ color: 'var(--color-accent)' }}>
+                                  {row.zero_result_searches.toLocaleString('fr-TN')}
+                                </span>
+                              </TableCellRight>
+                              <TableCellRight>
+                                <span style={{ color: 'var(--color-text-secondary)' }}>
+                                  {row.total_searches.toLocaleString('fr-TN')}
+                                </span>
+                              </TableCellRight>
+                              <TableCellRight>
+                                <span style={{
+                                  color: row.failure_rate >= 80
+                                    ? 'oklch(45% 0.18 25)'
+                                    : row.failure_rate >= 50
+                                    ? 'var(--color-accent)'
+                                    : 'var(--color-text-secondary)',
+                                  fontWeight: row.failure_rate >= 50 ? 600 : 400,
+                                }}>
+                                  {row.failure_rate}%
+                                </span>
+                              </TableCellRight>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Top property types */}
+                <div>
+                  <SubSectionTitle>Types de biens les plus recherchés</SubSectionTitle>
+                  <div className="rounded-2xl border overflow-hidden" style={{ borderColor: 'var(--color-border)' }}>
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr style={{ background: 'var(--color-bg)' }}>
+                          <TableHeader>Type de bien</TableHeader>
+                          <TableHeaderRight>Recherches</TableHeaderRight>
+                          <TableHeaderRight>% du total</TableHeaderRight>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+                        {!searchTrends || searchTrends.top_types.length === 0 ? (
+                          <EmptyRow colSpan={3} message="Aucune recherche par type" />
+                        ) : (
+                          searchTrends.top_types.map((row, i) => {
+                            const pct = searchTrends.total_searches > 0
+                              ? Math.round(row.search_count / searchTrends.total_searches * 100)
+                              : 0
+                            return (
+                              <tr key={i} className="hover:bg-[var(--color-bg)] transition-colors">
+                                <TableCell>
+                                  <span className="font-medium">
+                                    {PROP_LABELS[row.property_type ?? ''] ?? row.property_type ?? '—'}
+                                  </span>
+                                </TableCell>
+                                <TableCellRight>{row.search_count.toLocaleString('fr-TN')}</TableCellRight>
+                                <TableCellRight>
+                                  <span style={{ color: 'var(--color-text-secondary)' }}>{pct}%</span>
+                                </TableCellRight>
+                              </tr>
+                            )
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             </div>
           </section>
-        </>
+        </div>
       )}
     </main>
   )

@@ -6,10 +6,10 @@ import { adminApi, type Property, type PropertyStatus } from '@/lib/api'
 type StatusFilter = 'all' | PropertyStatus
 
 const STATUS_META: Record<string, { label: string; color: string; bg: string }> = {
-  published: { label: 'Publié',    color: 'var(--color-primary)',        bg: 'oklch(42% 0.09 155 / 0.08)' },
-  draft:     { label: 'Brouillon', color: 'var(--color-text-secondary)', bg: 'oklch(42% 0.009 155 / 0.06)' },
-  sold:      { label: 'Vendu',     color: 'var(--color-accent)',         bg: 'oklch(68% 0.1 78 / 0.1)' },
-  rented:    { label: 'Loué',      color: 'var(--color-accent)',         bg: 'oklch(68% 0.1 78 / 0.1)' },
+  published: { label: 'Publié',    color: 'var(--color-primary)',        bg: 'oklch(32% 0.08 130 / 0.1)' },
+  draft:     { label: 'Brouillon', color: 'var(--color-text-secondary)', bg: 'oklch(60% 0.014 70 / 0.1)' },
+  sold:      { label: 'Vendu',     color: 'var(--color-accent)',         bg: 'oklch(58% 0.14 45 / 0.12)' },
+  rented:    { label: 'Loué',      color: 'var(--color-accent)',         bg: 'oklch(58% 0.14 45 / 0.12)' },
 }
 
 const ALL_STATUSES: { value: PropertyStatus; label: string }[] = [
@@ -37,18 +37,17 @@ const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
 const PER_PAGE = 20
 
 export default function AdminAnnoncesPage() {
-  const [filter, setFilter]         = useState<StatusFilter>('all')
-  const [search, setSearch]         = useState('')
-  const [debouncedSearch, setDebounced] = useState('')
-  const [properties, setProperties] = useState<Property[]>([])
-  const [total, setTotal]           = useState(0)
-  const [lastPage, setLastPage]     = useState(1)
-  const [page, setPage]             = useState(1)
-  const [loading, setLoading]       = useState(true)
-  const [confirmDelete, setConfirmDelete]   = useState<string | null>(null)
+  const [filter,         setFilter]         = useState<StatusFilter>('all')
+  const [search,         setSearch]         = useState('')
+  const [debouncedSearch, setDebounced]     = useState('')
+  const [properties,     setProperties]     = useState<Property[]>([])
+  const [total,          setTotal]          = useState(0)
+  const [lastPage,       setLastPage]       = useState(1)
+  const [page,           setPage]           = useState(1)
+  const [loading,        setLoading]        = useState(true)
+  const [confirmDelete,  setConfirmDelete]  = useState<string | null>(null)
   const [changingStatus, setChangingStatus] = useState<string | null>(null)
 
-  // Debounce search
   useEffect(() => {
     const t = setTimeout(() => setDebounced(search), 350)
     return () => clearTimeout(t)
@@ -73,8 +72,6 @@ export default function AdminAnnoncesPage() {
   }, [filter, debouncedSearch, page])
 
   useEffect(() => { load() }, [load])
-
-  // Reset to page 1 on filter/search change
   useEffect(() => { setPage(1) }, [filter, debouncedSearch])
 
   function handleStatusChange(id: string, status: PropertyStatus) {
@@ -92,9 +89,14 @@ export default function AdminAnnoncesPage() {
 
   return (
     <main className="flex-1 px-6 py-8 max-w-6xl w-full">
+
+      {/* ── Header ── */}
       <div className="flex items-start justify-between mb-6 gap-4 flex-wrap">
         <div>
-          <h1 className="font-display font-semibold text-2xl" style={{ color: 'var(--color-text)' }}>Annonces</h1>
+          <p className="text-[10px] font-semibold uppercase tracking-widest mb-0.5" style={{ color: 'var(--color-muted)' }}>
+            Administration
+          </p>
+          <h1 className="font-display font-bold text-2xl" style={{ color: 'var(--color-text)' }}>Annonces</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--color-text-secondary)' }}>
             {total} bien{total !== 1 ? 's' : ''} au total
           </p>
@@ -111,20 +113,20 @@ export default function AdminAnnoncesPage() {
             placeholder="Rechercher…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 pr-4 py-2 rounded-xl border text-sm focus:outline-none focus:ring-2 w-56"
-            style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text)' }}
+            className="pl-9 pr-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 w-56"
+            style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
           />
         </div>
       </div>
 
-      {/* Status filter pills */}
-      <div className="flex gap-2 mb-5 flex-wrap">
+      {/* ── Status filter pills ── */}
+      <div className="flex gap-2 mb-6 flex-wrap">
         {STATUS_FILTERS.map((f) => (
           <button key={f.value} onClick={() => setFilter(f.value)}
             className="px-4 py-2 rounded-full text-sm font-medium transition-colors border"
             style={{
               borderColor: filter === f.value ? 'var(--color-primary)' : 'var(--color-border)',
-              background:  filter === f.value ? 'oklch(42% 0.09 155 / 0.08)' : 'transparent',
+              background:  filter === f.value ? 'oklch(32% 0.08 130 / 0.08)' : 'transparent',
               color:       filter === f.value ? 'var(--color-primary)' : 'var(--color-text-secondary)',
             }}>
             {f.label}
@@ -133,8 +135,8 @@ export default function AdminAnnoncesPage() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
+        <div className="flex justify-center py-16">
+          <div className="w-8 h-8 rounded-full border-2 animate-spin"
             style={{ borderColor: 'var(--color-primary)', borderTopColor: 'transparent' }} />
         </div>
       ) : (
@@ -144,18 +146,18 @@ export default function AdminAnnoncesPage() {
               <thead>
                 <tr style={{ background: 'var(--color-bg)' }}>
                   {['Bien', 'Prix', 'Statut', 'Date', 'Supprimer'].map((h) => (
-                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
+                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide"
                       style={{ color: 'var(--color-muted)' }}>
                       {h}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody style={{ background: 'var(--color-surface)' }}>
-                {properties.map((p, i) => {
+              <tbody className="divide-y" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+                {properties.map((p) => {
                   const s = STATUS_META[p.status] ?? STATUS_META.draft
                   return (
-                    <tr key={p.id} style={{ borderTop: i > 0 ? '1px solid var(--color-border)' : 'none' }}>
+                    <tr key={p.id} className="transition-colors hover:bg-[var(--color-bg)]">
                       <td className="px-4 py-3.5">
                         <p className="font-medium truncate max-w-[220px]" style={{ color: 'var(--color-text)' }}>{p.title}</p>
                         <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted)' }}>
@@ -225,7 +227,7 @@ export default function AdminAnnoncesPage() {
                 })}
                 {properties.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-10 text-center text-sm"
+                    <td colSpan={5} className="px-4 py-12 text-center text-sm italic"
                       style={{ color: 'var(--color-muted)' }}>
                       Aucune annonce dans cette catégorie.
                     </td>
@@ -246,14 +248,14 @@ export default function AdminAnnoncesPage() {
                   disabled={page <= 1}
                   onClick={() => setPage((p) => p - 1)}
                   className="px-4 py-2 rounded-xl text-sm font-medium border transition-colors disabled:opacity-40"
-                  style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
+                  style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)', background: 'var(--color-surface)' }}>
                   Précédent
                 </button>
                 <button
                   disabled={page >= lastPage}
                   onClick={() => setPage((p) => p + 1)}
                   className="px-4 py-2 rounded-xl text-sm font-medium border transition-colors disabled:opacity-40"
-                  style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
+                  style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)', background: 'var(--color-surface)' }}>
                   Suivant
                 </button>
               </div>

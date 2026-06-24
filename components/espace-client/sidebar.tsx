@@ -106,11 +106,11 @@ export function EspaceClientSidebar() {
 
   return (
     <aside
-      className="hidden lg:flex flex-col w-64 shrink-0 min-h-screen sticky top-0 border-r"
+      className="hidden lg:flex flex-col w-64 shrink-0 h-screen sticky top-0 border-r"
       style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
     >
       {/* Logo */}
-      <div className="px-6 py-5 border-b" style={{ borderColor: 'var(--color-border)' }}>
+      <div className="px-6 py-5 border-b shrink-0" style={{ borderColor: 'var(--color-border)' }}>
         <Link href="/" className="inline-flex items-center gap-2">
           <span className="font-display font-bold text-xl tracking-tight" style={{ color: 'var(--color-text)' }}>
             SAKAN
@@ -122,7 +122,7 @@ export function EspaceClientSidebar() {
       </div>
 
       {/* User block */}
-      <div className="px-4 py-4 border-b" style={{ borderColor: 'var(--color-border)' }}>
+      <div className="px-4 py-4 border-b shrink-0" style={{ borderColor: 'var(--color-border)' }}>
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center shrink-0"
             style={{ background: 'oklch(32% 0.08 130 / 0.1)' }}>
@@ -130,24 +130,24 @@ export function EspaceClientSidebar() {
               // eslint-disable-next-line @next/next/no-img-element
               <img src={userImage} alt={userName ?? ''} className="w-full h-full object-cover" />
             ) : (
-              <span className="text-sm font-bold" style={{ color: 'var(--color-primary)' }}>
+              <span className="text-sm font-bold" style={{ color: 'var(--color-primary)' }} suppressHydrationWarning>
                 {(userName ?? 'U')[0].toUpperCase()}
               </span>
             )}
           </div>
           <div className="min-w-0">
-            <p className="font-display font-semibold text-sm truncate" style={{ color: 'var(--color-text)' }}>
+            <p className="font-display font-semibold text-sm truncate" style={{ color: 'var(--color-text)' }} suppressHydrationWarning>
               {userName ?? 'Mon compte'}
             </p>
-            <p className="text-[10px] font-semibold uppercase tracking-widest mt-0.5" style={{ color: 'var(--color-muted)' }}>
+            <p className="text-[10px] font-semibold uppercase tracking-widest mt-0.5" style={{ color: 'var(--color-muted)' }} suppressHydrationWarning>
               {roleLabel}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 px-3 py-4">
+      {/* Navigation — scrollable if many items */}
+      <nav className="flex-1 px-3 py-4 overflow-y-auto">
         <p className="text-[10px] font-semibold uppercase tracking-widest px-3 mb-2" style={{ color: 'var(--color-muted)' }}>
           Navigation
         </p>
@@ -174,15 +174,14 @@ export function EspaceClientSidebar() {
         </div>
       </nav>
 
-      {/* Footer */}
-      <div className="px-3 py-4 border-t" style={{ borderColor: 'var(--color-border)' }}>
-        <p className="text-[10px] font-semibold uppercase tracking-widest px-3 mb-2" style={{ color: 'var(--color-muted)' }}>
-          Compte
-        </p>
+      {/* Footer — always visible at bottom */}
+      <div className="px-3 py-4 border-t shrink-0" style={{ borderColor: 'var(--color-border)' }}>
         <div className="space-y-0.5">
           <Link href="/"
             className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors"
-            style={{ color: 'var(--color-text-secondary)' }}>
+            style={{ color: 'var(--color-text-secondary)' }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-bg)' }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}>
             <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75}
                 d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />

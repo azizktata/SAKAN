@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { AdminSidebar } from '@/components/admin/admin-sidebar'
+import { AdminSidebar, AdminMobileBottomNav } from '@/components/admin/admin-sidebar'
 import { useAuth } from '@/lib/auth-context'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -27,9 +27,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="flex min-h-screen" style={{ background: 'var(--color-bg)' }}>
       <AdminSidebar />
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 pb-16 lg:pb-0">
         {children}
       </div>
+      <AdminMobileBottomNav />
     </div>
   )
 }
